@@ -21,6 +21,7 @@ Then:
 ### Keys Mode (play like an instrument)
 
 - **What it is:** QWERTY → notes (and optionally power chords).
+- **Default mapping:** Typewriter-linear (home row first), so typed letter flow maps to linear musical flow.
 - **Scale Lock vs All Notes:**
   - **Scale Lock:** quantizes to a scale (good for “rock-safe” playing).
   - **All Notes:** every semitone (better for “I need specific notes”).
@@ -28,6 +29,9 @@ Then:
   - **Row jump:** how far each QWERTY row shifts in pitch (lower = less “sharp” top rows).
   - **Octave:** shifts the whole keyboard up/down.
 - **Power chords:** toggles root + 5th + octave (more “guitar-ish”).
+- **Modifiers (Keys mode):**
+  - `Shift+key`: temporary octave-up note
+  - `Ctrl+key`: temporary chord hit (root + 5th + octave)
 - **Style:** switch between:
   - **Hold:** key down = note on, key up = note off (best for riffs)
   - **Chug 8ths / 16ths:** hold a key and it auto-repeats on a beat grid at the current BPM (best for rock rhythm)

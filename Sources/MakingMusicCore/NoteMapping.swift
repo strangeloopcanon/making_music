@@ -143,6 +143,20 @@ public struct KeyLayout: Equatable, Sendable {
         ]
     )
 
+    // Linear order optimized for typing flow (home row first).
+    // This powers the default "typewriter instrument" behavior.
+    public static let typewriterLinear = KeyLayout(
+        name: "Typewriter Linear",
+        rows: [
+            [
+                "a", "s", "d", "f", "g", "h", "j", "k", "l", ";", "'",
+                "q", "w", "e", "r", "t", "y", "u", "i", "o", "p",
+                "z", "x", "c", "v", "b", "n", "m", ",", ".", "/",
+                "1", "2", "3", "4", "5", "6", "7", "8", "9", "0", "-", "=",
+            ]
+        ]
+    )
+
     public static func == (lhs: KeyLayout, rhs: KeyLayout) -> Bool {
         lhs.name == rhs.name && lhs.rows == rhs.rows
     }

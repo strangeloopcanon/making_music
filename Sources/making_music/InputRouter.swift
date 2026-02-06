@@ -52,7 +52,8 @@ final class InputRouter {
     }
 
     private func shouldLetSystemHandleKeyEquivalent(_ event: NSEvent) -> Bool {
-        let keyEquivalentModifiers: NSEvent.ModifierFlags = [.command, .control, .option]
+        // Allow Control-modified note input in Keys mode (used for temporary chords).
+        let keyEquivalentModifiers: NSEvent.ModifierFlags = [.command, .option]
         guard !event.modifierFlags.intersection(keyEquivalentModifiers).isEmpty else { return false }
 
         if isArmToggleKey(event) { return false }

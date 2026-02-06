@@ -682,26 +682,9 @@ final class KeyCaptureView: NSView {
     }
 
     private func keyboardSpreadName(mode: NoteMappingMode, rowOffset: Int) -> String {
-        switch mode {
-        case .musical:
-            switch rowOffset {
-            case 0...1:
-                return "Compact"
-            case 2...3:
-                return "Guitar-ish"
-            default:
-                return "Wide"
-            }
-        case .chromatic:
-            switch rowOffset {
-            case 0...3:
-                return "Compact"
-            case 4...6:
-                return "Guitar-ish"
-            default:
-                return "Wide"
-            }
-        }
+        _ = mode
+        _ = rowOffset
+        return "Linear"
     }
 
     // MARK: - UI Setup
@@ -1009,13 +992,9 @@ final class KeyCaptureView: NSView {
         powerChordButton.state = controller.powerChordModeIsOn ? .on : .off
         
         let spread = keyboardSpreadName(mode: controller.mappingMode, rowOffset: controller.rowOffset)
-        switch controller.mappingMode {
-        case .musical:
-            rowIntervalLabel.stringValue = "Keyboard spread: \(spread) (\(controller.rowOffset) steps)"
-        case .chromatic:
-            rowIntervalLabel.stringValue = "Keyboard spread: \(spread) (\(controller.rowOffset) semitones)"
-        }
+        rowIntervalLabel.stringValue = "Keyboard mapping: Typewriter (\(spread))"
         rowIntervalSlider.integerValue = controller.rowOffset
+        rowIntervalSlider.isEnabled = false
         
         let octave = controller.octaveOffset >= 0 ? "+\(controller.octaveOffset)" : "\(controller.octaveOffset)"
         octaveLabel.stringValue = "Octave: \(octave)"

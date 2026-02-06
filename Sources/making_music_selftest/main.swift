@@ -37,6 +37,17 @@ expectEqual(chromatic.midiNoteNumber(forKey: "z"), 52, "Chromatic z")
 expectEqual(chromatic.midiNoteNumber(forKey: "x"), 53, "Chromatic x")
 expectEqual(chromatic.midiNoteNumber(forKey: "c"), 54, "Chromatic c")
 
+let typewriterMusical = NoteMapper(
+    mode: .musical,
+    root: root,
+    scale: .minorPentatonic,
+    keyLayout: .typewriterLinear
+)
+expectEqual(typewriterMusical.midiNoteNumber(forKey: "a"), 52, "Typewriter a")
+expectEqual(typewriterMusical.midiNoteNumber(forKey: "s"), 55, "Typewriter s")
+expectEqual(typewriterMusical.midiNoteNumber(forKey: "d"), 57, "Typewriter d")
+expectEqual(typewriterMusical.midiNoteNumber(forKey: "f"), 59, "Typewriter f")
+
 // Chord parsing coverage
 expectEqual(ChordParsing.parsePitchClassPrefix("C"), .c, "Chord parsing C")
 expectEqual(ChordParsing.parsePitchClassPrefix("F#"), .fSharp, "Chord parsing F#")

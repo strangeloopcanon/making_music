@@ -82,7 +82,7 @@ final class KeystrokeMusicController: @unchecked Sendable {
             scale: Scale.builtins.first ?? .minorPentatonic,
             octaveOffset: 0,
             rowOffset: rowOffsetMusicalDegrees,
-            keyLayout: .qwertyRows
+            keyLayout: .typewriterLinear
         )
 
         restoreSoundFontIfAvailable()
@@ -151,6 +151,7 @@ final class KeystrokeMusicController: @unchecked Sendable {
 
         let octave = noteMapper.octaveOffset >= 0 ? "+\(noteMapper.octaveOffset)" : "\(noteMapper.octaveOffset)"
         let rowInt = "Row jump: \(noteMapper.rowOffset)"
+        let layout = "Layout: Typewriter"
         let inst = "Inst: \(instrument.rawValue)"
         let sound = "Sound: \(soundSourceDisplayName)"
         let style = "Style: \(playStyle.rawValue) @\(tempoBPM)"
@@ -166,7 +167,7 @@ final class KeystrokeMusicController: @unchecked Sendable {
 
         let armed = isArmed ? "ARMED" : "disarmed"
 
-        return "\(armed) | \(mode) | \(inst) | \(sound) | \(style) | Octave: \(octave) | \(rowInt) | Vel: \(lastVelocity) | \(chords) | \(sustain) | \(last)"
+        return "\(armed) | \(mode) | \(layout) | \(inst) | \(sound) | \(style) | Octave: \(octave) | \(rowInt) | Vel: \(lastVelocity) | \(chords) | \(sustain) | \(last)"
     }
 
     var helpText: String {
@@ -181,15 +182,17 @@ final class KeystrokeMusicController: @unchecked Sendable {
           Style      (Keys) Use Hold / Chug in the UI for auto-repeat rhythm
           SoundFont  Use the SoundFont button to load a high-quality .sf2 for more realistic piano/guitar
           Range      Use Row jump / Octave in the UI to keep the top rows from sounding too sharp
-          [ / ]      Octave down / up
+          Shift+key  Temporary octave-up note
+          Ctrl+key   Temporary chord hit (root+5th+octave)
+          [ / ]      Octave down / up (global offset)
           Tab        Toggle power-chord mode
           \\          Toggle Scale Lock / All Notes
           Cmd+1..5    Pick scale (Scale Lock mode)
           Esc        Panic (all notes off)
 
-        Row jump
-          Changes how far each QWERTY row shifts in pitch.
-          Smaller values keep the top rows from sounding too sharp.
+        Typewriter layout
+          Keys are mapped linearly in typing order (home row first).
+          This keeps typing phrases musically consistent.
 
         Playable keys (low → high)
           z x c v b n m , . /
@@ -466,22 +469,30 @@ final class KeystrokeMusicController: @unchecked Sendable {
         if chugTasksByKeyCode[keyCode] != nil { return }
 
         heldKeyStringByCode[keyCode] = key
-        let accent = modifierFlags.contains(.shift)
+        let octaveUpModifier = modifierFlags.contains(.shift)
+        let chordModifier = modifierFlags.contains(.control)
+        let effectiveBaseNote = applyOctaveModifier(baseNote: baseNote, octaveUp: octaveUpModifier)
 
         switch playStyle {
         case .hold:
-            let notesToPlay = notesForPress(baseNote: baseNote)
+            let notesToPlay = notesForPress(baseNote: effectiveBaseNote, chordModifier: chordModifier)
             heldNotesByKeyCode[keyCode] = notesToPlay
 
-            let velocity = nextVelocity(timestamp: timestamp, accent: accent)
+            let velocity = nextVelocity(timestamp: timestamp, accent: false)
             for note in notesToPlay {
                 output.noteOn(note: note, velocity: velocity)
             }
 
-            lastPlayedNote = baseNote
-            lastAction = "Play \(key) → \(noteName(midi: Int(baseNote)))."
+            lastPlayedNote = effectiveBaseNote
+            lastAction = "Play \(key) → \(noteName(midi: Int(effectiveBaseNote)))."
         case .chug8, .chug16:
-            startChug(keyCode: keyCode, key: key, accent: accent, timestamp: timestamp)
+            startChug(
+                keyCode: keyCode,
+                key: key,
+                octaveUpModifier: octaveUpModifier,
+                chordModifier: chordModifier,
+                timestamp: timestamp
+            )
         }
     }
 
@@ -658,9 +669,17 @@ final class KeystrokeMusicController: @unchecked Sendable {
         return UInt8(min(127, Int(base) + 24))
     }
 
-    private func notesForPress(baseNote: UInt8) -> Set<UInt8> {
+    private func applyOctaveModifier(baseNote: UInt8, octaveUp: Bool) -> UInt8 {
+        guard octaveUp else { return baseNote }
+        if baseNote <= 115 {
+            return baseNote + 12
+        }
+        return baseNote
+    }
+
+    private func notesForPress(baseNote: UInt8, chordModifier: Bool = false) -> Set<UInt8> {
         var notes: Set<UInt8> = [baseNote]
-        guard powerChordModeIsOn else { return notes }
+        guard powerChordModeIsOn || chordModifier else { return notes }
 
         if baseNote <= 120 {
             notes.insert(baseNote + 7)
@@ -711,7 +730,13 @@ final class KeystrokeMusicController: @unchecked Sendable {
         sustainIsDown = false
     }
 
-    private func startChug(keyCode: UInt16, key: String, accent: Bool, timestamp: TimeInterval) {
+    private func startChug(
+        keyCode: UInt16,
+        key: String,
+        octaveUpModifier: Bool,
+        chordModifier: Bool,
+        timestamp: TimeInterval
+    ) {
         let intervalSeconds: Double
         switch playStyle {
         case .hold:
@@ -723,7 +748,7 @@ final class KeystrokeMusicController: @unchecked Sendable {
         }
 
         let hitDuration = max(0.04, min(0.22, intervalSeconds * 0.55))
-        let baseVelocity = UInt8(max(64, Int(nextVelocity(timestamp: timestamp, accent: accent))))
+        let baseVelocity = UInt8(max(64, Int(nextVelocity(timestamp: timestamp, accent: false))))
 
         lastAction = "Chug \(key)."
         notifyStateDidChange()
@@ -733,9 +758,10 @@ final class KeystrokeMusicController: @unchecked Sendable {
 
             while !Task.isCancelled {
                 guard self.isArmed else { break }
-                guard let baseNote = self.noteMapper.midiNote(forKey: key) else { break }
+                guard let mappedBaseNote = self.noteMapper.midiNote(forKey: key) else { break }
+                let baseNote = self.applyOctaveModifier(baseNote: mappedBaseNote, octaveUp: octaveUpModifier)
 
-                let notes = Array(self.notesForPress(baseNote: baseNote)).sorted()
+                let notes = Array(self.notesForPress(baseNote: baseNote, chordModifier: chordModifier)).sorted()
                 if !notes.isEmpty {
                     self.playChordHit(notes: notes, velocity: baseVelocity, durationSeconds: hitDuration)
                     self.lastPlayedNote = baseNote
