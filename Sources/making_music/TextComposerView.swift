@@ -23,6 +23,7 @@ final class TextComposerView: NSView {
 
     private let starterChartText = "Em"
     private let starterScriptText = "trust i seek and i find in you"
+    private var lastEditorTextSnapshot = ""
 
     private var showsAdvancedControls: Bool = false {
         didSet { render() }
@@ -62,6 +63,16 @@ final class TextComposerView: NSView {
     }
 
     func render() {
+        if !showsAdvancedControls, performer.mode == .chords {
+            performer.mode = .script
+        }
+        if !showsAdvancedControls {
+            performer.scriptInputMode = .sentence
+            performer.chordAdvanceMode = .onSpaces
+        }
+
+        let liveTypeModeIsOn = performer.mode == .script && !showsAdvancedControls
+
         switch performer.mode {
         case .script:
             modeSegmented.selectedSegment = 0
@@ -71,13 +82,18 @@ final class TextComposerView: NSView {
 
         switch performer.mode {
         case .script:
-            switch performer.scriptInputMode {
-            case .sentence:
+            if liveTypeModeIsOn {
                 legendLabel.stringValue =
-                    "Script/Sentence: type normal words. 1 character = 1 Grid tick. Syntax: ',' rest, '-' hold, '.' resolve, '!' accent."
-            case .linearV1:
-                legendLabel.stringValue =
-                    "Script/Linear v1: letters=melody, *=full chord, ^=arp up, v=arp down, /=next chord, 1..5=direct tones, '_'/'-' hold, ',' rest, '.' resolve, '!' accent."
+                    "Type & Play: turn Play ON, click this box, and type. Each character plays instantly. Space = hit chord + move to next chord."
+            } else {
+                switch performer.scriptInputMode {
+                case .sentence:
+                    legendLabel.stringValue =
+                        "Script/Sentence: type normal words. 1 character = 1 Grid tick. Syntax: ',' rest, '-' hold, '.' resolve, '!' accent."
+                case .linearV1:
+                    legendLabel.stringValue =
+                        "Script/Linear v1: letters=melody, *=full chord, ^=arp up, v=arp down, /=next chord, 1..5=direct tones, '_'/'-' hold, ',' rest, '.' resolve, '!' accent."
+                }
             }
             chordStatusLabel.stringValue = performer.statusForDisplay
         case .chords:
@@ -86,10 +102,11 @@ final class TextComposerView: NSView {
             chordStatusLabel.stringValue = performer.statusForDisplay
         }
 
+        modeSegmented.isHidden = !showsAdvancedControls
         songbookPopup.isHidden = false
-        restartButton.isHidden = performer.mode != .script
-        inputPopup.isHidden = performer.mode != .script
-        stylePopup.isHidden = performer.mode != .script
+        restartButton.isHidden = !showsAdvancedControls || performer.mode != .script
+        inputPopup.isHidden = !showsAdvancedControls || performer.mode != .script
+        stylePopup.isHidden = !showsAdvancedControls || performer.mode != .script
         chordStyleSegmented.isHidden = !showsAdvancedControls || performer.mode != .script
         chordAdvancePopup.isHidden = !showsAdvancedControls || performer.mode != .script
 
@@ -97,7 +114,7 @@ final class TextComposerView: NSView {
         chordStatusLabel.textColor = .secondaryLabelColor
         chordStatusLabel.isHidden = false
 
-        chordControlsRow.isHidden = false
+        chordControlsRow.isHidden = !showsAdvancedControls
 
         switch performer.scriptInputMode {
         case .sentence:
@@ -147,7 +164,7 @@ final class TextComposerView: NSView {
 
         textView.setHighlightedRange(performer.highlightedRange)
 
-        performer.updatePlayback(shouldPlay: controller.isArmed && performer.mode == .script)
+        performer.updatePlayback(shouldPlay: controller.isArmed && performer.mode == .script && showsAdvancedControls)
     }
 
     private func setupUI() {
@@ -270,6 +287,7 @@ final class TextComposerView: NSView {
             textView.string = performer.scriptTextForDisplay
             textView.setSelectedRange(NSRange(location: (textView.string as NSString).length, length: 0))
         }
+        lastEditorTextSnapshot = textView.string
 
         NotificationCenter.default.addObserver(
             self,
@@ -325,6 +343,7 @@ final class TextComposerView: NSView {
         }
         syncPerformerTextToEditor()
         render()
+        lastEditorTextSnapshot = textView.string
     }
 
     @objc private func songbookChanged(_ sender: NSPopUpButton) {
@@ -494,14 +513,32 @@ final class TextComposerView: NSView {
 
     @objc private func textDidChange(_ notification: Notification) {
         _ = notification
+        let currentText = textView.string
+        let liveTypeModeIsOn = performer.mode == .script && !showsAdvancedControls
+        if liveTypeModeIsOn, controller.isArmed {
+            let inserted = newlyAppendedCharacters(previous: lastEditorTextSnapshot, current: currentText)
+            let now = Date.timeIntervalSinceReferenceDate
+            for (offset, character) in inserted.enumerated() {
+                performer.playLiveTypedCharacter(character, timestamp: now + (Double(offset) * 0.01))
+            }
+        }
+        lastEditorTextSnapshot = currentText
+
         syncEditorTextToPerformer()
-        if performer.mode == .script, controller.isArmed {
+        if performer.mode == .script {
             let caret = textView.selectedRange().location
             if caret != NSNotFound {
                 performer.moveScriptCursorToRecentCharacter(atTextLocation: caret)
             }
         }
         render()
+    }
+
+    private func newlyAppendedCharacters(previous: String, current: String) -> [Character] {
+        guard current.count >= previous.count else { return [] }
+        guard current.hasPrefix(previous) else { return [] }
+        let start = current.index(current.startIndex, offsetBy: previous.count)
+        return Array(current[start...])
     }
 
     private func syncEditorTextToPerformer() {
@@ -521,6 +558,7 @@ final class TextComposerView: NSView {
             textView.string = performer.chordChartTextForDisplay
         }
         textView.setSelectedRange(NSRange(location: (textView.string as NSString).length, length: 0))
+        lastEditorTextSnapshot = textView.string
     }
 }
 

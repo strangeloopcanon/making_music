@@ -149,6 +149,122 @@ final class TextMusicPerformer {
         scriptIndex = min(recentIndex, scriptCharacters.count - 1)
     }
 
+    func playLiveTypedCharacter(_ character: Character, timestamp: TimeInterval) {
+        guard mode == .script else { return }
+        guard !chartTokens.isEmpty else { return }
+
+        if timingGrid == .off {
+            timingGrid = .sixteenths
+        }
+
+        let bpm = max(40, controller.tempoBPM)
+        let intervalSeconds = gridIntervalSeconds(bpm: bpm) ?? (60.0 / Double(bpm) / 4.0)
+        let barLength = max(1, ticksPerBar())
+        let tickInBar = tickIndex % barLength
+
+        if chordAdvanceMode == .everyBar {
+            chartIndex = (tickIndex / barLength) % chartTokens.count
+        }
+
+        let chord = chartTokens[chartIndex].chord
+        let velocity = controller.nextVelocity(timestamp: timestamp, accent: false)
+
+        defer {
+            tickIndex += 1
+            virtualTimestamp = timestamp + intervalSeconds
+        }
+
+        if character.isWhitespace {
+            playChordHit(chord: chord, velocity: velocity, includeBass: true)
+            if chordAdvanceMode == .onSpaces {
+                chartIndex = (chartIndex + 1) % chartTokens.count
+                lastMelodyNote = nil
+                lastMelodyChordIndex = nil
+            }
+            return
+        }
+
+        if character == "," {
+            return
+        }
+
+        if character == "-" || character == "_" {
+            return
+        }
+
+        if scriptInputMode == .linearV1 {
+            if playLinearToken(
+                character: character,
+                chord: chord,
+                tickInBar: tickInBar,
+                barLength: barLength,
+                velocity: { accent in
+                    controller.nextVelocity(timestamp: timestamp, accent: accent)
+                },
+                intervalSeconds: intervalSeconds,
+                holdFloorSeconds: 0
+            ) {
+                return
+            }
+        }
+
+        if character == "." {
+            playResolve(velocity: velocity)
+            return
+        }
+
+        if character == "!" {
+            let accented = controller.nextVelocity(timestamp: timestamp, accent: true)
+            playChordHit(chord: chord, velocity: accented, includeBass: true)
+            return
+        }
+
+        if isBoundaryPunctuation(character) {
+            return
+        }
+
+        switch scriptStyle {
+        case .balladPick:
+            playBalladPick(
+                character: character,
+                chord: chord,
+                tickInBar: tickInBar,
+                barLength: barLength,
+                velocity: velocity,
+                intervalSeconds: intervalSeconds,
+                holdFloorSeconds: 0
+            )
+        case .rockStrum:
+            playRockStrum(
+                character: character,
+                chord: chord,
+                tickInBar: tickInBar,
+                velocity: velocity,
+                intervalSeconds: intervalSeconds,
+                holdFloorSeconds: 0
+            )
+        case .powerChug:
+            playPowerChug(
+                character: character,
+                chord: chord,
+                tickInBar: tickInBar,
+                velocity: velocity,
+                intervalSeconds: intervalSeconds,
+                holdFloorSeconds: 0
+            )
+        case .synthPulse:
+            playSynthPulse(
+                character: character,
+                chord: chord,
+                tickInBar: tickInBar,
+                barLength: barLength,
+                velocity: velocity,
+                intervalSeconds: intervalSeconds,
+                holdFloorSeconds: 0
+            )
+        }
+    }
+
     func restart() {
         scriptIndex = 0
         tickIndex = 0

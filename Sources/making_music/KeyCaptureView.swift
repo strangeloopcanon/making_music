@@ -1053,7 +1053,10 @@ final class KeyCaptureView: NSView {
     private func textHelpText() -> String {
         """
         Text Mode
-          Script (Sentence): type a normal sentence.
+          Script (Simple): turn Play ON and just type.
+                 Each character plays immediately (no loop wait).
+                 Space plays a chord hit and moves to the next chart chord.
+          Script (Advanced): optional grid sequencer.
                  While ARMED: the app plays 1 character per Grid tick inside the current chord.
                  Syntax: ',' rest, '-' hold, '.' resolve, '!' accent.
           Script (Linear v1): deterministic command language for richer piano from linear typing.

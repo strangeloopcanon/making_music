@@ -41,6 +41,7 @@ Then:
 Text mode has two sub-modes:
 
 - **Script (recommended):** type a normal sentence, then press `Cmd+Enter` to play it.
+  - In **Simple UI mode**, Script is “type-and-hear-now”: each typed character plays immediately.
   - The app reads your text at the current **Grid** and **BPM**: `1 character = 1 grid tick`.
   - Playback is deterministic: same text + same chart + same settings = same result.
   - Character identity matters (`a` vs `t`, uppercase accents, punctuation syntax below).
