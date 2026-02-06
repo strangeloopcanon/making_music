@@ -495,6 +495,12 @@ final class TextComposerView: NSView {
     @objc private func textDidChange(_ notification: Notification) {
         _ = notification
         syncEditorTextToPerformer()
+        if performer.mode == .script, controller.isArmed {
+            let caret = textView.selectedRange().location
+            if caret != NSNotFound {
+                performer.moveScriptCursorToRecentCharacter(atTextLocation: caret)
+            }
+        }
         render()
     }
 

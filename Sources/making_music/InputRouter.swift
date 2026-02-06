@@ -18,6 +18,7 @@ final class InputRouter {
                 controller.handleKeyDown(event)
                 return true
             }
+            keyCaptureView.focusTextInput()
             return false
         }
 

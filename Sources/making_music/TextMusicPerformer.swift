@@ -139,6 +139,16 @@ final class TextMusicPerformer {
         }
     }
 
+    func moveScriptCursorToRecentCharacter(atTextLocation location: Int) {
+        guard !scriptCharacters.isEmpty else {
+            scriptIndex = 0
+            return
+        }
+
+        let recentIndex = max(0, location - 1)
+        scriptIndex = min(recentIndex, scriptCharacters.count - 1)
+    }
+
     func restart() {
         scriptIndex = 0
         tickIndex = 0

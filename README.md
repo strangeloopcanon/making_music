@@ -45,6 +45,7 @@ Text mode has two sub-modes:
   - Playback is deterministic: same text + same chart + same settings = same result.
   - Character identity matters (`a` vs `t`, uppercase accents, punctuation syntax below).
   - You can change **Grid** and **BPM** while it is already playing.
+  - While ARMED, edits retarget playback to the character you just typed (no full-loop wait).
   - Input mode can be switched to **Linear v1** for command-style writing:
     - `letters` melody, `*` full chord, `^` arp up, `v` arp down, `/` next chord
     - `1..5` direct chord tones, `-`/`_` hold, `,` rest, `.` resolve, `!` accent

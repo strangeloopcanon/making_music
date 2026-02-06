@@ -179,6 +179,11 @@ final class KeyCaptureView: NSView {
         inputMode == .text
     }
 
+    func focusTextInput() {
+        guard isTextInputMode else { return }
+        textComposerView.focus()
+    }
+
     // MARK: - Actions
 
     @objc private func inputModeChanged(_ sender: NSSegmentedControl) {
