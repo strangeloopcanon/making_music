@@ -100,9 +100,7 @@ final class KeyCaptureView: NSView {
     private let scalePopup = NSPopUpButton(frame: .zero, pullsDown: false)
     private let powerChordButton = NSButton(checkboxWithTitle: "Power chords", target: nil, action: nil)
 
-    // Range / Intervals
-    private let rowIntervalLabel = NSTextField(labelWithString: "Row jump: 2")
-    private let rowIntervalSlider = NSSlider(value: 2, minValue: 0, maxValue: 12, target: nil, action: nil)
+    // Range
     private let octaveLabel = NSTextField(labelWithString: "Octave: +0")
     private let octaveSlider = NSSlider(value: 0, minValue: -2, maxValue: 3, target: nil, action: nil)
 
@@ -121,7 +119,6 @@ final class KeyCaptureView: NSView {
     private let settingsSeparatorBottom = NSBox.separator()
     private let settingsRow = NSStackView()
     private let settingsSeparatorBetweenPerformanceAndMapping = NSBox.separator()
-    private let settingsSeparatorBetweenMappingAndRange = NSBox.separator()
     private let performanceGroup = NSStackView()
     private let mappingGroup = NSStackView()
     private let rangeGroup = NSStackView()
@@ -294,11 +291,6 @@ final class KeyCaptureView: NSView {
         controller.toggleStrumChords()
     }
     
-    @objc private func rowIntervalChanged(_ sender: NSSlider) {
-        _ = sender
-        controller.setRowOffset(Int(sender.intValue))
-    }
-    
     @objc private func octaveChanged(_ sender: NSSlider) {
         _ = sender
         controller.setOctave(Int(sender.intValue))
@@ -344,7 +336,6 @@ final class KeyCaptureView: NSView {
             controller.setPlayStyle(.hold)
             controller.setTempoBPM(140)
             controller.setStrumChordsIsOn(false)
-            controller.setRowOffset(2)
             controller.setOctave(0)
             controller.setAction("Preset: Pretty Piano.")
 
@@ -356,7 +347,6 @@ final class KeyCaptureView: NSView {
             controller.setPlayStyle(.chug8)
             controller.setTempoBPM(140)
             controller.setStrumChordsIsOn(true)
-            controller.setRowOffset(5)
             controller.setOctave(-1)
             controller.setAction("Preset: Rock Guitar.")
 
@@ -368,7 +358,6 @@ final class KeyCaptureView: NSView {
             controller.setPlayStyle(.chug16)
             controller.setTempoBPM(160)
             controller.setStrumChordsIsOn(false)
-            controller.setRowOffset(5)
             controller.setOctave(-1)
             controller.setAction("Preset: Guitar Chug.")
 
@@ -681,12 +670,6 @@ final class KeyCaptureView: NSView {
         return rendered.joined(separator: "  ")
     }
 
-    private func keyboardSpreadName(mode: NoteMappingMode, rowOffset: Int) -> String {
-        _ = mode
-        _ = rowOffset
-        return "Linear"
-    }
-
     // MARK: - UI Setup
 
     private func setupUI() {
@@ -760,18 +743,10 @@ final class KeyCaptureView: NSView {
         powerChordButton.target = self
         powerChordButton.action = #selector(powerChordsToggled(_:))
 
-        rowIntervalSlider.numberOfTickMarks = 13
-        rowIntervalSlider.allowsTickMarkValuesOnly = true
-        rowIntervalSlider.target = self
-        rowIntervalSlider.action = #selector(rowIntervalChanged(_:))
-
         octaveSlider.numberOfTickMarks = 6
         octaveSlider.allowsTickMarkValuesOnly = true
         octaveSlider.target = self
         octaveSlider.action = #selector(octaveChanged(_:))
-
-        rowIntervalLabel.font = .monospacedSystemFont(ofSize: 12, weight: .regular)
-        rowIntervalLabel.textColor = .secondaryLabelColor
 
         octaveLabel.font = .monospacedSystemFont(ofSize: 12, weight: .regular)
         octaveLabel.textColor = .secondaryLabelColor
@@ -838,11 +813,6 @@ final class KeyCaptureView: NSView {
         rangeTitle.font = .systemFont(ofSize: 12, weight: .semibold)
         rangeTitle.textColor = .secondaryLabelColor
 
-        let rowIntervalRow = NSStackView(views: [rowIntervalLabel, rowIntervalSlider])
-        rowIntervalRow.orientation = .horizontal
-        rowIntervalRow.alignment = .centerY
-        rowIntervalRow.spacing = 8
-
         let octaveRow = NSStackView(views: [octaveLabel, octaveSlider])
         octaveRow.orientation = .horizontal
         octaveRow.alignment = .centerY
@@ -852,9 +822,7 @@ final class KeyCaptureView: NSView {
         rangeGroup.alignment = .leading
         rangeGroup.spacing = 6
         rangeGroup.addArrangedSubview(rangeTitle)
-        rangeGroup.addArrangedSubview(rowIntervalRow)
         rangeGroup.addArrangedSubview(octaveRow)
-        rowIntervalSlider.widthAnchor.constraint(equalToConstant: 100).isActive = true
         octaveSlider.widthAnchor.constraint(equalToConstant: 100).isActive = true
 
         settingsRow.orientation = .horizontal
@@ -863,7 +831,6 @@ final class KeyCaptureView: NSView {
         settingsRow.addArrangedSubview(performanceGroup)
         settingsRow.addArrangedSubview(settingsSeparatorBetweenPerformanceAndMapping)
         settingsRow.addArrangedSubview(mappingGroup)
-        settingsRow.addArrangedSubview(settingsSeparatorBetweenMappingAndRange)
         settingsRow.addArrangedSubview(rangeGroup)
         
         // 3. Main Content
@@ -945,7 +912,6 @@ final class KeyCaptureView: NSView {
         performanceGroup.isHidden = !showsAdvancedControls
         mappingGroup.isHidden = !showsAdvancedControls
         settingsSeparatorBetweenPerformanceAndMapping.isHidden = !showsAdvancedControls
-        settingsSeparatorBetweenMappingAndRange.isHidden = !showsAdvancedControls
 
         keyboardMapView.isHidden = !isKeys
         touchpadPadView.isHidden = !isKeys
@@ -990,11 +956,6 @@ final class KeyCaptureView: NSView {
         powerChordButton.isEnabled = true
         
         powerChordButton.state = controller.powerChordModeIsOn ? .on : .off
-        
-        let spread = keyboardSpreadName(mode: controller.mappingMode, rowOffset: controller.rowOffset)
-        rowIntervalLabel.stringValue = "Keyboard mapping: Typewriter (\(spread))"
-        rowIntervalSlider.integerValue = controller.rowOffset
-        rowIntervalSlider.isEnabled = false
         
         let octave = controller.octaveOffset >= 0 ? "+\(controller.octaveOffset)" : "\(controller.octaveOffset)"
         octaveLabel.stringValue = "Octave: \(octave)"

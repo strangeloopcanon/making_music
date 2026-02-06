@@ -25,8 +25,7 @@ Then:
 - **Scale Lock vs All Notes:**
   - **Scale Lock:** quantizes to a scale (good for “rock-safe” playing).
   - **All Notes:** every semitone (better for “I need specific notes”).
-- **Range (Row jump / Octave):**
-  - **Row jump:** how far each QWERTY row shifts in pitch (lower = less “sharp” top rows).
+- **Range (Octave):**
   - **Octave:** shifts the whole keyboard up/down.
 - **Power chords:** toggles root + 5th + octave (more “guitar-ish”).
 - **Modifiers (Keys mode):**
@@ -80,7 +79,6 @@ Keys mode controls in the UI:
 - **Style**: Hold / Chug 8ths / Chug 16ths
 - **BPM**: tempo for Chug
 - **Strum**: strum chord hits (most noticeable with guitar-ish instruments)
-- **Row jump**: row-to-row pitch spacing (try smaller values if the top rows feel too high)
 - **Octave**: same as `[` / `]`, but as a slider
 
 ### Practice Songbook (Keys mode)
@@ -121,7 +119,7 @@ Tip: use a short sentence with spaces (bass motion), e.g. `trust i seek and i fi
 **Option A: Keys mode (no Text mode needed)**
 
 1. Set: **All Notes** + **Power chords** + **Instrument: Guitar (Overdriven)**.
-2. Use **Row jump** / **Octave** until it feels comfortable.
+2. Use **Octave** until it feels comfortable.
 3. Use the on-screen key map to find and play: `G  D/F#  Em  F  C  D` (repeat in rhythm).
 
 **Option B: Text mode (Script)**

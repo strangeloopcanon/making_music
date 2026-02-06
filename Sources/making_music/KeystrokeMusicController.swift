@@ -51,8 +51,6 @@ final class KeystrokeMusicController: @unchecked Sendable {
     private(set) var lastVelocity: UInt8 = 96 { didSet { notifyStateDidChange() } }
 
     private var noteMapper: NoteMapper { didSet { notifyStateDidChange() } }
-    private var rowOffsetMusicalDegrees: Int = 2
-    private var rowOffsetChromaticSemitones: Int = 5
 
     private var heldNotesByKeyCode: [UInt16: Set<UInt8>] = [:]
     private var heldKeyStringByCode: [UInt16: String] = [:]
@@ -81,7 +79,7 @@ final class KeystrokeMusicController: @unchecked Sendable {
             root: RootNote(pitchClass: .e, octave: 3),
             scale: Scale.builtins.first ?? .minorPentatonic,
             octaveOffset: 0,
-            rowOffset: rowOffsetMusicalDegrees,
+            rowOffset: 0,
             keyLayout: .typewriterLinear
         )
 
@@ -150,7 +148,6 @@ final class KeystrokeMusicController: @unchecked Sendable {
         }
 
         let octave = noteMapper.octaveOffset >= 0 ? "+\(noteMapper.octaveOffset)" : "\(noteMapper.octaveOffset)"
-        let rowInt = "Row jump: \(noteMapper.rowOffset)"
         let layout = "Layout: Typewriter"
         let inst = "Inst: \(instrument.rawValue)"
         let sound = "Sound: \(soundSourceDisplayName)"
@@ -167,7 +164,7 @@ final class KeystrokeMusicController: @unchecked Sendable {
 
         let armed = isArmed ? "ARMED" : "disarmed"
 
-        return "\(armed) | \(mode) | \(layout) | \(inst) | \(sound) | \(style) | Octave: \(octave) | \(rowInt) | Vel: \(lastVelocity) | \(chords) | \(sustain) | \(last)"
+        return "\(armed) | \(mode) | \(layout) | \(inst) | \(sound) | \(style) | Octave: \(octave) | Vel: \(lastVelocity) | \(chords) | \(sustain) | \(last)"
     }
 
     var helpText: String {
@@ -181,7 +178,7 @@ final class KeystrokeMusicController: @unchecked Sendable {
           UI         Simple hides most buttons; Advanced shows everything
           Style      (Keys) Use Hold / Chug in the UI for auto-repeat rhythm
           SoundFont  Use the SoundFont button to load a high-quality .sf2 for more realistic piano/guitar
-          Range      Use Row jump / Octave in the UI to keep the top rows from sounding too sharp
+          Range      Use Octave in the UI to shift note range
           Shift+key  Temporary octave-up note
           Ctrl+key   Temporary chord hit (root+5th+octave)
           [ / ]      Octave down / up (global offset)
@@ -294,28 +291,10 @@ final class KeystrokeMusicController: @unchecked Sendable {
 
         switch mode {
         case .musical:
-            noteMapper.rowOffset = rowOffsetMusicalDegrees
             lastAction = "Scale Lock on."
         case .chromatic:
-            noteMapper.rowOffset = rowOffsetChromaticSemitones
             lastAction = "All Notes on."
         }
-    }
-
-    func setRowOffset(_ offset: Int) {
-        let clamped = max(0, min(12, offset))
-        noteMapper.rowOffset = clamped
-        switch noteMapper.mode {
-        case .musical:
-            rowOffsetMusicalDegrees = clamped
-        case .chromatic:
-            rowOffsetChromaticSemitones = clamped
-        }
-        lastAction = "Row jump: \(clamped)."
-    }
-
-    var rowOffset: Int {
-        noteMapper.rowOffset
     }
     
     var octaveOffset: Int {
