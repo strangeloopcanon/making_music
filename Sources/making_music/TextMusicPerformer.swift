@@ -16,6 +16,11 @@ final class TextMusicPerformer {
         case synthPulse = "Synth Pulse"
     }
 
+    enum ScriptInputMode: String, CaseIterable {
+        case sentence = "Sentence"
+        case linearV1 = "Linear v1"
+    }
+
     enum ChordPlaybackStyle: String, CaseIterable {
         case stabs = "Stabs"
         case comp = "Two-hand"
@@ -58,6 +63,7 @@ final class TextMusicPerformer {
 
     var mode: Mode = .script
     var scriptStyle: ScriptStyle = .balladPick
+    var scriptInputMode: ScriptInputMode = .sentence
     var chordPlaybackStyle: ChordPlaybackStyle = .comp
     var timingGrid: TimingGrid = .sixteenths
     var chordAdvanceMode: ChordAdvanceMode = .everyBar
@@ -100,16 +106,17 @@ final class TextMusicPerformer {
 
     var statusForDisplay: String {
         let grid = "Grid: \(timingGrid.rawValue)@\(controller.tempoBPM)"
+        let input = "Input: \(scriptInputMode.rawValue)"
         let style = "Style: \(scriptStyle.rawValue)"
         let chordMode = "Chord: \(chordAdvanceMode.rawValue)"
 
         if chartTokens.isEmpty {
-            return "\(style)   \(grid)   \(chordMode)   Chords: (none)"
+            return "\(input)   \(style)   \(grid)   \(chordMode)   Chords: (none)"
         }
 
         let current = chartTokens[chartIndex].raw
         let next = chartTokens[(chartIndex + 1) % chartTokens.count].raw
-        return "\(style)   \(grid)   \(chordMode)   Chord \(chartIndex + 1)/\(chartTokens.count): \(current)   Next: \(next)"
+        return "\(input)   \(style)   \(grid)   \(chordMode)   Chord \(chartIndex + 1)/\(chartTokens.count): \(current)   Next: \(next)"
     }
 
     func setChordChartText(_ text: String) {
@@ -242,17 +249,32 @@ final class TextMusicPerformer {
             return
         }
 
-        if character == "-" {
+        if character == "-" || (scriptInputMode == .linearV1 && character == "_") {
             return
         }
 
-        let holdTicks = TextRhythm.holdRunLength(after: characterIndex, in: scriptCharacters)
+        let holdChars: Set<Character> = scriptInputMode == .linearV1 ? ["-", "_"] : ["-"]
+        let holdTicks = TextRhythm.holdRunLength(after: characterIndex, in: scriptCharacters, holdCharacters: holdChars)
         let holdFloorSeconds = holdDurationFloorSeconds(
             holdTicks: holdTicks,
             tickInBar: tickInBar,
             barLength: barLength,
             intervalSeconds: intervalSeconds
         )
+
+        if scriptInputMode == .linearV1 {
+            if playLinearToken(
+                character: character,
+                chord: chord,
+                tickInBar: tickInBar,
+                barLength: barLength,
+                velocity: velocity,
+                intervalSeconds: intervalSeconds,
+                holdFloorSeconds: holdFloorSeconds
+            ) {
+                return
+            }
+        }
 
         if character == "." {
             playResolve(velocity: velocity(accent: false), holdFloorSeconds: holdFloorSeconds)
@@ -313,6 +335,74 @@ final class TextMusicPerformer {
         }
     }
 
+    private func playLinearToken(
+        character: Character,
+        chord: ChordSymbol,
+        tickInBar: Int,
+        barLength: Int,
+        velocity: (Bool) -> UInt8,
+        intervalSeconds: Double,
+        holdFloorSeconds: Double
+    ) -> Bool {
+        if character == "/" {
+            chartIndex = (chartIndex + 1) % chartTokens.count
+            lastMelodyNote = nil
+            lastMelodyChordIndex = nil
+            let nextChord = chartTokens[chartIndex].chord
+            playBassNote(chord: nextChord, velocity: velocity(false), holdFloorSeconds: holdFloorSeconds)
+            return true
+        }
+
+        if character == "*" {
+            playChordHit(chord: chord, velocity: velocity(false), includeBass: true, holdFloorSeconds: holdFloorSeconds)
+            return true
+        }
+
+        if character == "^" {
+            playArpeggio(chord: chord, ascending: true, velocity: velocity(false), intervalSeconds: intervalSeconds, holdFloorSeconds: holdFloorSeconds)
+            return true
+        }
+
+        if character == "v" {
+            playArpeggio(chord: chord, ascending: false, velocity: velocity(false), intervalSeconds: intervalSeconds, holdFloorSeconds: holdFloorSeconds)
+            return true
+        }
+
+        if character == "." {
+            playResolve(velocity: velocity(false), holdFloorSeconds: holdFloorSeconds)
+            return true
+        }
+
+        if character == "!" {
+            playChordHit(chord: chord, velocity: velocity(true), includeBass: true, holdFloorSeconds: holdFloorSeconds)
+            return true
+        }
+
+        if isBoundaryPunctuation(character) {
+            return true
+        }
+
+        switch character {
+        case "1":
+            playBassNote(chord: chord, velocity: velocity(false), holdFloorSeconds: holdFloorSeconds)
+            return true
+        case "2":
+            playIndexedChordTone(chord: chord, index: 1, velocity: velocity(false), intervalSeconds: intervalSeconds, holdFloorSeconds: holdFloorSeconds)
+            return true
+        case "3":
+            playIndexedChordTone(chord: chord, index: 2, velocity: velocity(false), intervalSeconds: intervalSeconds, holdFloorSeconds: holdFloorSeconds)
+            return true
+        case "4":
+            playIndexedChordTone(chord: chord, index: 3, velocity: velocity(false), intervalSeconds: intervalSeconds, holdFloorSeconds: holdFloorSeconds)
+            return true
+        case "5":
+            playChordHit(chord: chord, velocity: velocity(false), includeBass: false, holdFloorSeconds: holdFloorSeconds)
+            return true
+        default:
+            return false
+        }
+    }
+
     private func holdDurationFloorSeconds(holdTicks: Int, tickInBar: Int, barLength: Int, intervalSeconds: Double) -> Double {
         guard holdTicks > 0 else { return 0 }
 
@@ -364,6 +454,57 @@ final class TextMusicPerformer {
         let duration = applyHoldDuration(baseDurationSeconds: 0.45, holdFloorSeconds: holdFloorSeconds)
         controller.playTransient(notes: [UInt8(tonic)], velocity: velocity, durationSeconds: duration)
         controller.setAction("Resolve")
+    }
+
+    private func playIndexedChordTone(
+        chord: ChordSymbol,
+        index: Int,
+        velocity: UInt8,
+        intervalSeconds: Double,
+        holdFloorSeconds: Double
+    ) {
+        let notes = chordNotes(for: chord).sorted()
+        guard !notes.isEmpty else { return }
+        let clamped = min(max(0, index), notes.count - 1)
+        let note = notes[clamped]
+        let baseDuration = min(0.50, max(0.12, intervalSeconds * 1.5))
+        let duration = applyHoldDuration(baseDurationSeconds: baseDuration, holdFloorSeconds: holdFloorSeconds)
+        controller.playTransient(notes: [note], velocity: velocity, durationSeconds: duration)
+    }
+
+    private func playArpeggio(
+        chord: ChordSymbol,
+        ascending: Bool,
+        velocity: UInt8,
+        intervalSeconds: Double,
+        holdFloorSeconds: Double
+    ) {
+        let notes = chordNotes(for: chord).sorted()
+        guard notes.count >= 2 else {
+            if let note = notes.first {
+                controller.playTransient(notes: [note], velocity: velocity, durationSeconds: applyHoldDuration(baseDurationSeconds: 0.25, holdFloorSeconds: holdFloorSeconds))
+            }
+            return
+        }
+
+        let playable = Array(notes.prefix(min(4, notes.count)))
+        let ordered = ascending ? playable : playable.reversed()
+        let generation = playbackGeneration
+        let stepSeconds = min(0.045, max(0.012, intervalSeconds * 0.22))
+        let baseDuration = min(0.50, max(0.12, intervalSeconds * 1.4))
+        let duration = applyHoldDuration(baseDurationSeconds: baseDuration, holdFloorSeconds: holdFloorSeconds)
+
+        for (index, note) in ordered.enumerated() {
+            Task { @MainActor [weak self] in
+                guard let self else { return }
+                let delay = Double(index) * stepSeconds
+                if delay > 0 {
+                    try? await Task.sleep(nanoseconds: UInt64(delay * 1_000_000_000))
+                }
+                guard self.playbackGeneration == generation else { return }
+                self.controller.playTransient(notes: [note], velocity: velocity, durationSeconds: duration)
+            }
+        }
     }
 
     private func gridIntervalSeconds(bpm: Int) -> Double? {

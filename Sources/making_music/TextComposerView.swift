@@ -8,6 +8,7 @@ final class TextComposerView: NSView {
     private let modeSegmented = NSSegmentedControl(labels: ["Script", "Chords"], trackingMode: .selectOne, target: nil, action: nil)
     private let songbookPopup = NSPopUpButton(frame: .zero, pullsDown: false)
     private let restartButton = NSButton(title: "Restart", target: nil, action: nil)
+    private let inputPopup = NSPopUpButton(frame: .zero, pullsDown: false)
     private let stylePopup = NSPopUpButton(frame: .zero, pullsDown: false)
     private let chordStyleSegmented = NSSegmentedControl(labels: ["Stabs", "Two-hand"], trackingMode: .selectOne, target: nil, action: nil)
     private let chordAdvancePopup = NSPopUpButton(frame: .zero, pullsDown: false)
@@ -70,8 +71,14 @@ final class TextComposerView: NSView {
 
         switch performer.mode {
         case .script:
-            legendLabel.stringValue =
-                "Script: type a normal sentence. When ARMED, it plays 1 character per Grid tick inside the current chord. Syntax: ',' rest, '-' hold, '.' resolve, '!' accent. (Advanced: chord advance + chord voicings.)"
+            switch performer.scriptInputMode {
+            case .sentence:
+                legendLabel.stringValue =
+                    "Script/Sentence: type normal words. 1 character = 1 Grid tick. Syntax: ',' rest, '-' hold, '.' resolve, '!' accent."
+            case .linearV1:
+                legendLabel.stringValue =
+                    "Script/Linear v1: letters=melody, *=full chord, ^=arp up, v=arp down, /=next chord, 1..5=direct tones, '_'/'-' hold, ',' rest, '.' resolve, '!' accent."
+            }
             chordStatusLabel.stringValue = performer.statusForDisplay
         case .chords:
             legendLabel.stringValue =
@@ -81,6 +88,7 @@ final class TextComposerView: NSView {
 
         songbookPopup.isHidden = false
         restartButton.isHidden = performer.mode != .script
+        inputPopup.isHidden = performer.mode != .script
         stylePopup.isHidden = performer.mode != .script
         chordStyleSegmented.isHidden = !showsAdvancedControls || performer.mode != .script
         chordAdvancePopup.isHidden = !showsAdvancedControls || performer.mode != .script
@@ -90,6 +98,13 @@ final class TextComposerView: NSView {
         chordStatusLabel.isHidden = false
 
         chordControlsRow.isHidden = false
+
+        switch performer.scriptInputMode {
+        case .sentence:
+            inputPopup.selectItem(at: 0)
+        case .linearV1:
+            inputPopup.selectItem(at: 1)
+        }
 
         switch performer.scriptStyle {
         case .balladPick:
@@ -161,6 +176,13 @@ final class TextComposerView: NSView {
         chordStyleSegmented.target = self
         chordStyleSegmented.action = #selector(chordStyleChanged(_:))
         chordStyleSegmented.selectedSegment = 1
+
+        inputPopup.target = self
+        inputPopup.action = #selector(scriptInputModeChanged(_:))
+        inputPopup.addItems(withTitles: [
+            "Input: \(TextMusicPerformer.ScriptInputMode.sentence.rawValue)",
+            "Input: \(TextMusicPerformer.ScriptInputMode.linearV1.rawValue)",
+        ])
 
         stylePopup.target = self
         stylePopup.action = #selector(styleChanged(_:))
@@ -264,6 +286,7 @@ final class TextComposerView: NSView {
         chordControlsRow.orientation = .horizontal
         chordControlsRow.alignment = .centerY
         chordControlsRow.spacing = 8
+        chordControlsRow.addArrangedSubview(inputPopup)
         chordControlsRow.addArrangedSubview(stylePopup)
         chordControlsRow.addArrangedSubview(chordStyleSegmented)
         chordControlsRow.addArrangedSubview(chordAdvancePopup)
@@ -390,6 +413,20 @@ final class TextComposerView: NSView {
             performer.scriptStyle = .synthPulse
         default:
             performer.scriptStyle = .balladPick
+        }
+        render()
+        focus()
+    }
+
+    @objc private func scriptInputModeChanged(_ sender: NSPopUpButton) {
+        _ = sender
+        switch inputPopup.indexOfSelectedItem {
+        case 0:
+            performer.scriptInputMode = .sentence
+        case 1:
+            performer.scriptInputMode = .linearV1
+        default:
+            performer.scriptInputMode = .sentence
         }
         render()
         focus()

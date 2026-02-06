@@ -45,6 +45,9 @@ Text mode has two sub-modes:
   - Playback is deterministic: same text + same chart + same settings = same result.
   - Character identity matters (`a` vs `t`, uppercase accents, punctuation syntax below).
   - You can change **Grid** and **BPM** while it is already playing.
+  - Input mode can be switched to **Linear v1** for command-style writing:
+    - `letters` melody, `*` full chord, `^` arp up, `v` arp down, `/` next chord
+    - `1..5` direct chord tones, `-`/`_` hold, `,` rest, `.` resolve, `!` accent
   - Use **Style** to pick how the sentence is performed (4 options): Ballad Pick / Rock Strum / Power Chug / Synth Pulse.
   - Letters become “picks” inside the current chord; **vowels** tend to pick higher tones.
   - Syntax: `,` rest, `-` hold, `.` resolve (tonic), `!` accent.

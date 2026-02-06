@@ -58,5 +58,10 @@ expectTrue(ChordParsing.parseRootAndBass("") == nil, "Empty chord token should f
 expectEqual(TextRhythm.holdRunLength(after: 0, in: Array("a--b-")), 2, "Hold run from first char")
 expectEqual(TextRhythm.holdRunLength(after: 3, in: Array("a--b-")), 1, "Hold run near end")
 expectEqual(TextRhythm.holdRunLength(after: 2, in: Array("--a")), 0, "Hold run does not wrap")
+expectEqual(
+    TextRhythm.holdRunLength(after: 0, in: Array("a__b"), holdCharacters: ["-", "_"]),
+    2,
+    "Hold run supports alternate hold characters"
+)
 
 print("ok")
