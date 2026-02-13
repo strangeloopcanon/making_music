@@ -10,6 +10,10 @@ DerivedData/
 .swiftpm/xcode/package.xcworkspace/contents.xcworkspacedata
 .netrc
 
+# Playwright / browser testing
+.playwright-mcp/
+*.png
+
 # Large local audio assets (SoundFonts)
 /SoundFonts/
 *.sf2

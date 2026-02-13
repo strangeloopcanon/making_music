@@ -39,6 +39,11 @@ final class KeystrokeMusicController: @unchecked Sendable {
         case chug16 = "Chug 16ths"
     }
 
+    enum VoiceLeadMode: String, CaseIterable, Sendable {
+        case off = "Off"
+        case smooth = "Smooth"
+    }
+
     private(set) var isArmed = false { didSet { notifyStateDidChange() } }
     private(set) var sustainIsDown = false { didSet { notifyStateDidChange() } }
     private(set) var powerChordModeIsOn = false { didSet { notifyStateDidChange() } }
@@ -49,6 +54,8 @@ final class KeystrokeMusicController: @unchecked Sendable {
     private(set) var strumChordsIsOn: Bool = true { didSet { notifyStateDidChange() } }
     private(set) var lastPlayedNote: UInt8? { didSet { notifyStateDidChange() } }
     private(set) var lastVelocity: UInt8 = 96 { didSet { notifyStateDidChange() } }
+    private(set) var voiceLeadMode: VoiceLeadMode = .off { didSet { notifyStateDidChange() } }
+    private(set) var baseVelocity: UInt8 = 90 { didSet { notifyStateDidChange() } }
 
     private var noteMapper: NoteMapper { didSet { notifyStateDidChange() } }
 
@@ -62,6 +69,7 @@ final class KeystrokeMusicController: @unchecked Sendable {
     private var transientNoteRefCount: [UInt8: Int] = [:]
     private var transientGeneration: UInt64 = 0
     private var stateDidChangeNotificationScheduled = false
+    private var lastVoiceLeadNote: UInt8?
 
     private var lastAction: String = "Click the window, then press Cmd+Enter to arm." { didSet { notifyStateDidChange() } }
     private var lastNoteOnTimestamp: TimeInterval?
@@ -148,7 +156,8 @@ final class KeystrokeMusicController: @unchecked Sendable {
         }
 
         let octave = noteMapper.octaveOffset >= 0 ? "+\(noteMapper.octaveOffset)" : "\(noteMapper.octaveOffset)"
-        let layout = "Layout: Typewriter"
+        let layout = "Layout: \(noteMapper.keyLayout.name)"
+        let voiceLead = voiceLeadMode == .smooth ? "VL: on" : "VL: off"
         let inst = "Inst: \(instrument.rawValue)"
         let sound = "Sound: \(soundSourceDisplayName)"
         let style = "Style: \(playStyle.rawValue) @\(tempoBPM)"
@@ -164,7 +173,7 @@ final class KeystrokeMusicController: @unchecked Sendable {
 
         let armed = isArmed ? "ARMED" : "disarmed"
 
-        return "\(armed) | \(mode) | \(layout) | \(inst) | \(sound) | \(style) | Octave: \(octave) | Vel: \(lastVelocity) | \(chords) | \(sustain) | \(last)"
+        return "\(armed) | \(mode) | \(layout) | \(voiceLead) | \(inst) | \(sound) | \(style) | Octave: \(octave) | Vel: \(lastVelocity) | \(chords) | \(sustain) | \(last)"
     }
 
     var helpText: String {
@@ -180,6 +189,7 @@ final class KeystrokeMusicController: @unchecked Sendable {
           SoundFont  Use the SoundFont button to load a high-quality .sf2 for more realistic piano/guitar
           Range      Use Octave in the UI to shift note range
           Shift+key  Temporary octave-up note
+          Opt+key    Temporary bass (octave-down) note
           Ctrl+key   Temporary chord hit (root+5th+octave)
           [ / ]      Octave down / up (global offset)
           Tab        Toggle power-chord mode
@@ -187,9 +197,12 @@ final class KeystrokeMusicController: @unchecked Sendable {
           Cmd+1..5    Pick scale (Scale Lock mode)
           Esc        Panic (all notes off)
 
-        Typewriter layout
-          Keys are mapped linearly in typing order (home row first).
-          This keeps typing phrases musically consistent.
+        Layout
+          Typewriter: keys are mapped linearly in typing order (home row first).
+          Melodic: keys ordered by English letter frequency — common letters
+            cluster in a narrow pitch range, producing melodic output from natural typing.
+          Voice Lead (Smooth): each note snaps to the nearest octave of its pitch class
+            relative to the last note you played, keeping the melody tight and singable.
 
         Playable keys (low → high)
           z x c v b n m , . /
@@ -324,6 +337,30 @@ final class KeystrokeMusicController: @unchecked Sendable {
         lastAction = strumChordsIsOn ? "Strum on." : "Strum off."
     }
 
+    func setKeyLayout(_ layout: KeyLayout) {
+        noteMapper.keyLayout = layout
+        lastVoiceLeadNote = nil
+        lastAction = "Layout: \(layout.name)."
+    }
+
+    var currentKeyLayout: KeyLayout {
+        noteMapper.keyLayout
+    }
+
+    func setVoiceLeadMode(_ mode: VoiceLeadMode) {
+        guard voiceLeadMode != mode else { return }
+        voiceLeadMode = mode
+        lastVoiceLeadNote = nil
+        lastAction = "Voice lead: \(mode.rawValue)."
+    }
+
+    func setBaseVelocity(_ velocity: UInt8) {
+        let clamped = max(40, min(127, velocity))
+        guard baseVelocity != clamped else { return }
+        baseVelocity = clamped
+        lastAction = "Velocity: \(clamped)."
+    }
+
     func playChordHit(notes: [UInt8], velocity: UInt8, durationSeconds: Double) {
         let sorted = notes.sorted()
         guard strumChordsIsOn, sorted.count > 1, (instrument != .piano || powerChordModeIsOn) else {
@@ -443,18 +480,22 @@ final class KeystrokeMusicController: @unchecked Sendable {
         if modifierFlags.contains([.command, .control, .option]) { return }
 
         guard isArmed else { return }
-        guard let baseNote = noteMapper.midiNote(forKey: key) else { return }
+        guard let rawNote = noteMapper.midiNote(forKey: key) else { return }
         if heldNotesByKeyCode[keyCode] != nil { return }
         if chugTasksByKeyCode[keyCode] != nil { return }
 
         heldKeyStringByCode[keyCode] = key
         let octaveUpModifier = modifierFlags.contains(.shift)
         let chordModifier = modifierFlags.contains(.control)
-        let effectiveBaseNote = applyOctaveModifier(baseNote: baseNote, octaveUp: octaveUpModifier)
+        let bassModifier = modifierFlags.contains(.option)
+
+        var baseNote = applyVoiceLeading(rawNote)
+        if octaveUpModifier, baseNote <= 115 { baseNote += 12 }
+        if bassModifier, baseNote >= 12 { baseNote -= 12 }
 
         switch playStyle {
         case .hold:
-            let notesToPlay = notesForPress(baseNote: effectiveBaseNote, chordModifier: chordModifier)
+            let notesToPlay = notesForPress(baseNote: baseNote, chordModifier: chordModifier)
             heldNotesByKeyCode[keyCode] = notesToPlay
 
             let velocity = nextVelocity(timestamp: timestamp, accent: false)
@@ -462,13 +503,15 @@ final class KeystrokeMusicController: @unchecked Sendable {
                 output.noteOn(note: note, velocity: velocity)
             }
 
-            lastPlayedNote = effectiveBaseNote
-            lastAction = "Play \(key) → \(noteName(midi: Int(effectiveBaseNote)))."
+            lastPlayedNote = baseNote
+            lastVoiceLeadNote = baseNote
+            lastAction = "Play \(key) → \(noteName(midi: Int(baseNote)))."
         case .chug8, .chug16:
             startChug(
                 keyCode: keyCode,
                 key: key,
                 octaveUpModifier: octaveUpModifier,
+                bassModifier: bassModifier,
                 chordModifier: chordModifier,
                 timestamp: timestamp
             )
@@ -648,12 +691,9 @@ final class KeystrokeMusicController: @unchecked Sendable {
         return UInt8(min(127, Int(base) + 24))
     }
 
-    private func applyOctaveModifier(baseNote: UInt8, octaveUp: Bool) -> UInt8 {
-        guard octaveUp else { return baseNote }
-        if baseNote <= 115 {
-            return baseNote + 12
-        }
-        return baseNote
+    private func applyVoiceLeading(_ rawNote: UInt8) -> UInt8 {
+        guard voiceLeadMode == .smooth else { return rawNote }
+        return VoiceLeading.smooth(rawNote: rawNote, reference: lastVoiceLeadNote)
     }
 
     private func notesForPress(baseNote: UInt8, chordModifier: Bool = false) -> Set<UInt8> {
@@ -707,46 +747,56 @@ final class KeystrokeMusicController: @unchecked Sendable {
         padHeldNotes.removeAll()
         padBaseNote = nil
         sustainIsDown = false
+        lastVoiceLeadNote = nil
     }
 
     private func startChug(
         keyCode: UInt16,
         key: String,
         octaveUpModifier: Bool,
+        bassModifier: Bool,
         chordModifier: Bool,
         timestamp: TimeInterval
     ) {
-        let intervalSeconds: Double
-        switch playStyle {
-        case .hold:
-            return
-        case .chug8:
-            intervalSeconds = (60.0 / Double(tempoBPM)) / 2.0
-        case .chug16:
-            intervalSeconds = (60.0 / Double(tempoBPM)) / 4.0
-        }
+        guard playStyle != .hold else { return }
 
-        let hitDuration = max(0.04, min(0.22, intervalSeconds * 0.55))
-        let baseVelocity = UInt8(max(64, Int(nextVelocity(timestamp: timestamp, accent: false))))
+        let chugVelocity = UInt8(max(64, Int(nextVelocity(timestamp: timestamp, accent: false))))
 
         lastAction = "Chug \(key)."
         notifyStateDidChange()
 
         let task = Task { @MainActor [weak self] in
             guard let self else { return }
+            var nextTickNanos = DispatchTime.now().uptimeNanoseconds
 
-            while !Task.isCancelled {
+            chugLoop: while !Task.isCancelled {
                 guard self.isArmed else { break }
-                guard let mappedBaseNote = self.noteMapper.midiNote(forKey: key) else { break }
-                let baseNote = self.applyOctaveModifier(baseNote: mappedBaseNote, octaveUp: octaveUpModifier)
+                guard self.playStyle != .hold else { break chugLoop }
+
+                let intervalSeconds: Double = self.playStyle == .chug8
+                    ? (60.0 / Double(self.tempoBPM)) / 2.0
+                    : (60.0 / Double(self.tempoBPM)) / 4.0
+
+                let hitDuration = max(0.04, min(0.22, intervalSeconds * 0.55))
+
+                guard let mappedNote = self.noteMapper.midiNote(forKey: key) else { break }
+                var baseNote = self.applyVoiceLeading(mappedNote)
+                if octaveUpModifier, baseNote <= 115 { baseNote += 12 }
+                if bassModifier, baseNote >= 12 { baseNote -= 12 }
 
                 let notes = Array(self.notesForPress(baseNote: baseNote, chordModifier: chordModifier)).sorted()
                 if !notes.isEmpty {
-                    self.playChordHit(notes: notes, velocity: baseVelocity, durationSeconds: hitDuration)
+                    self.playChordHit(notes: notes, velocity: chugVelocity, durationSeconds: hitDuration)
                     self.lastPlayedNote = baseNote
+                    self.lastVoiceLeadNote = baseNote
                 }
 
-                try? await Task.sleep(nanoseconds: UInt64(intervalSeconds * 1_000_000_000))
+                let intervalNanos = UInt64(intervalSeconds * 1_000_000_000)
+                nextTickNanos += intervalNanos
+                let now = DispatchTime.now().uptimeNanoseconds
+                if nextTickNanos > now {
+                    try? await Task.sleep(nanoseconds: nextTickNanos - now)
+                }
             }
         }
 
@@ -785,14 +835,15 @@ final class KeystrokeMusicController: @unchecked Sendable {
         defer { lastNoteOnTimestamp = timestamp }
 
         guard let lastNoteOnTimestamp else {
-            lastVelocity = 96
+            lastVelocity = baseVelocity
             return lastVelocity
         }
 
         let delta = max(0, timestamp - lastNoteOnTimestamp)
         let clamped = min(max(delta, 0.03), 0.50)
         let t = (clamped - 0.03) / (0.50 - 0.03)
-        let velocity = Int((126 - (t * 80)).rounded())
+        // Center dynamics around baseVelocity: fast playing = base+30, slow = base-30
+        let velocity = Int(baseVelocity) + 30 - Int((t * 60).rounded())
         lastVelocity = UInt8(max(28, min(127, velocity)))
         return lastVelocity
     }

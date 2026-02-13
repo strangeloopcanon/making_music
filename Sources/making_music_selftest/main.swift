@@ -75,4 +75,32 @@ expectEqual(
     "Hold run supports alternate hold characters"
 )
 
+// Melodic layout: keys ordered by English letter frequency.
+let melodicMusical = NoteMapper(
+    mode: .musical,
+    root: root,
+    scale: .naturalMinor,
+    keyLayout: .melodic
+)
+// E natural minor: E F# G A B C D = offsets [0, 2, 3, 5, 7, 8, 10]
+expectEqual(melodicMusical.midiNoteNumber(forKey: "e"), 52, "Melodic e (degree 0, E3)")
+expectEqual(melodicMusical.midiNoteNumber(forKey: "t"), 54, "Melodic t (degree 1, F#3)")
+expectEqual(melodicMusical.midiNoteNumber(forKey: "a"), 55, "Melodic a (degree 2, G3)")
+expectEqual(melodicMusical.midiNoteNumber(forKey: "o"), 57, "Melodic o (degree 3, A3)")
+expectEqual(melodicMusical.midiNoteNumber(forKey: "i"), 59, "Melodic i (degree 4, B3)")
+expectEqual(melodicMusical.midiNoteNumber(forKey: "n"), 60, "Melodic n (degree 5, C4)")
+expectEqual(melodicMusical.midiNoteNumber(forKey: "s"), 62, "Melodic s (degree 6, D4)")
+expectEqual(melodicMusical.midiNoteNumber(forKey: "h"), 64, "Melodic h (degree 7, E4)")
+
+// Voice-leading: nearest octave of a pitch class to a reference note.
+expectEqual(VoiceLeading.nearestOctave(pitchClass: 4, to: 60), 64, "VL: E nearest to C4=60 → E4=64")
+expectEqual(VoiceLeading.nearestOctave(pitchClass: 4, to: 50), 52, "VL: E nearest to D3=50 → E3=52")
+expectEqual(VoiceLeading.nearestOctave(pitchClass: 4, to: 64), 64, "VL: E nearest to E4=64 → E4=64")
+expectEqual(VoiceLeading.nearestOctave(pitchClass: 0, to: 60), 60, "VL: C nearest to C4=60 → C4=60")
+expectEqual(VoiceLeading.nearestOctave(pitchClass: 7, to: 52), 55, "VL: G nearest to E3=52 → G3=55")
+
+// Voice-leading smooth helper.
+expectEqual(VoiceLeading.smooth(rawNote: 79, reference: 55), 55, "VL smooth: raw G5=79 → G3=55 near ref 55")
+expectEqual(VoiceLeading.smooth(rawNote: 52, reference: nil), 52, "VL smooth: nil reference returns raw")
+
 print("ok")

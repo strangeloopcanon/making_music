@@ -157,8 +157,55 @@ public struct KeyLayout: Equatable, Sendable {
         ]
     )
 
+    // Letters ordered by English frequency, then punctuation, then numbers.
+    // Common letters cluster in a narrow pitch range, producing melodic
+    // output from natural typing when combined with voice-leading.
+    public static let melodic = KeyLayout(
+        name: "Melodic",
+        rows: [
+            [
+                "e", "t", "a", "o", "i", "n", "s", "h", "r", "d", "l",
+                "c", "u", "m", "w", "f", "g", "y", "p", "b", "v", "k",
+                "j", "x", "q", "z", ";", "'", ",", ".", "/",
+                "1", "2", "3", "4", "5", "6", "7", "8", "9", "0", "-", "=",
+            ]
+        ]
+    )
+
     public static func == (lhs: KeyLayout, rhs: KeyLayout) -> Bool {
         lhs.name == rhs.name && lhs.rows == rhs.rows
+    }
+}
+
+public enum VoiceLeading {
+    /// Find the octave of `pitchClass` (0-11) closest to `reference` MIDI note.
+    /// Returns a MIDI note number (0-127).
+    public static func nearestOctave(pitchClass: Int, to reference: Int) -> Int {
+        let pc = ((pitchClass % 12) + 12) % 12
+        var best = pc
+        var bestDistance = abs(pc - reference)
+
+        var candidate = pc
+        while candidate <= 127 {
+            let distance = abs(candidate - reference)
+            if distance < bestDistance {
+                bestDistance = distance
+                best = candidate
+            }
+            candidate += 12
+        }
+
+        return max(0, min(127, best))
+    }
+
+    /// Voice-lead a raw MIDI note toward `reference` by finding the nearest
+    /// octave of the same pitch class. Returns the raw note unchanged if
+    /// `reference` is nil.
+    public static func smooth(rawNote: UInt8, reference: UInt8?) -> UInt8 {
+        guard let ref = reference else { return rawNote }
+        let pitchClass = Int(rawNote) % 12
+        let result = nearestOctave(pitchClass: pitchClass, to: Int(ref))
+        return UInt8(max(0, min(127, result)))
     }
 }
 

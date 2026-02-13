@@ -18,11 +18,13 @@ final class KeyCaptureView: NSView {
     }
 
     private enum Preset: Int {
-        case prettyPiano = 1
-        case rockGuitar = 2
-        case guitarChug = 3
-        case chordChartPiano = 4
-        case chordChartGuitar = 5
+        case melodicPiano = 1
+        case melodicRock = 2
+        case prettyPiano = 3
+        case rockGuitar = 4
+        case guitarChug = 5
+        case chordChartPiano = 6
+        case chordChartGuitar = 7
     }
 
     private enum PracticeSong: Int, CaseIterable {
@@ -96,9 +98,15 @@ final class KeyCaptureView: NSView {
     private let strumButton = NSButton(checkboxWithTitle: "Strum", target: nil, action: nil)
 
     // Mapping
+    private let layoutPopup = NSPopUpButton(frame: .zero, pullsDown: false)
+    private let voiceLeadButton = NSButton(checkboxWithTitle: "Voice lead", target: nil, action: nil)
     private let modeSegmented = NSSegmentedControl(labels: ["Scale Lock", "All Notes"], trackingMode: .selectOne, target: nil, action: nil)
     private let scalePopup = NSPopUpButton(frame: .zero, pullsDown: false)
     private let powerChordButton = NSButton(checkboxWithTitle: "Power chords", target: nil, action: nil)
+
+    // Velocity
+    private let velocityLabel = NSTextField(labelWithString: "Vel: 90")
+    private let velocitySlider = NSSlider(value: 90, minValue: 40, maxValue: 127, target: nil, action: nil)
 
     // Range
     private let octaveLabel = NSTextField(labelWithString: "Octave: +0")
@@ -296,6 +304,30 @@ final class KeyCaptureView: NSView {
         controller.setOctave(Int(sender.intValue))
     }
 
+    @objc private func layoutChanged(_ sender: NSPopUpButton) {
+        _ = sender
+        switch layoutPopup.indexOfSelectedItem {
+        case 0:
+            controller.setKeyLayout(.typewriterLinear)
+            controller.setVoiceLeadMode(.off)
+        case 1:
+            controller.setKeyLayout(.melodic)
+            controller.setVoiceLeadMode(.smooth)
+        default:
+            break
+        }
+    }
+
+    @objc private func voiceLeadToggled(_ sender: NSButton) {
+        _ = sender
+        controller.setVoiceLeadMode(voiceLeadButton.state == .on ? .smooth : .off)
+    }
+
+    @objc private func velocityChanged(_ sender: NSSlider) {
+        _ = sender
+        controller.setBaseVelocity(UInt8(sender.integerValue))
+    }
+
     private func setInputMode(_ mode: InputMode) {
         inputMode = mode
         inputModeSegmented.selectedSegment = mode.rawValue
@@ -327,14 +359,47 @@ final class KeyCaptureView: NSView {
         textComposerView.stopPlayback()
 
         switch preset {
+        case .melodicPiano:
+            setInputMode(.keys)
+            controller.setInstrument(.piano)
+            controller.setKeyLayout(.melodic)
+            controller.setVoiceLeadMode(.smooth)
+            controller.setMappingMode(.musical)
+            controller.setScale(.naturalMinor)
+            controller.setPowerChordModeIsOn(false)
+            controller.setPlayStyle(.hold)
+            controller.setTempoBPM(120)
+            controller.setBaseVelocity(80)
+            controller.setStrumChordsIsOn(false)
+            controller.setOctave(0)
+            controller.setAction("Preset: Melodic Piano.")
+
+        case .melodicRock:
+            setInputMode(.keys)
+            controller.setInstrument(.guitarOverdriven)
+            controller.setKeyLayout(.melodic)
+            controller.setVoiceLeadMode(.smooth)
+            controller.setMappingMode(.musical)
+            controller.setScale(.blues)
+            controller.setPowerChordModeIsOn(true)
+            controller.setPlayStyle(.chug8)
+            controller.setTempoBPM(140)
+            controller.setBaseVelocity(90)
+            controller.setStrumChordsIsOn(true)
+            controller.setOctave(-1)
+            controller.setAction("Preset: Melodic Rock.")
+
         case .prettyPiano:
             setInputMode(.keys)
             controller.setInstrument(.piano)
+            controller.setKeyLayout(.typewriterLinear)
+            controller.setVoiceLeadMode(.off)
             controller.setMappingMode(.musical)
             controller.setScale(.minorPentatonic)
             controller.setPowerChordModeIsOn(false)
             controller.setPlayStyle(.hold)
             controller.setTempoBPM(140)
+            controller.setBaseVelocity(90)
             controller.setStrumChordsIsOn(false)
             controller.setOctave(0)
             controller.setAction("Preset: Pretty Piano.")
@@ -342,10 +407,13 @@ final class KeyCaptureView: NSView {
         case .rockGuitar:
             setInputMode(.keys)
             controller.setInstrument(.guitarOverdriven)
+            controller.setKeyLayout(.typewriterLinear)
+            controller.setVoiceLeadMode(.off)
             controller.setMappingMode(.chromatic)
             controller.setPowerChordModeIsOn(true)
             controller.setPlayStyle(.chug8)
             controller.setTempoBPM(140)
+            controller.setBaseVelocity(90)
             controller.setStrumChordsIsOn(true)
             controller.setOctave(-1)
             controller.setAction("Preset: Rock Guitar.")
@@ -353,10 +421,13 @@ final class KeyCaptureView: NSView {
         case .guitarChug:
             setInputMode(.keys)
             controller.setInstrument(.guitarDistortion)
+            controller.setKeyLayout(.typewriterLinear)
+            controller.setVoiceLeadMode(.off)
             controller.setMappingMode(.chromatic)
             controller.setPowerChordModeIsOn(true)
             controller.setPlayStyle(.chug16)
             controller.setTempoBPM(160)
+            controller.setBaseVelocity(95)
             controller.setStrumChordsIsOn(false)
             controller.setOctave(-1)
             controller.setAction("Preset: Guitar Chug.")
@@ -364,7 +435,10 @@ final class KeyCaptureView: NSView {
         case .chordChartPiano:
             setInputMode(.text)
             controller.setInstrument(.piano)
+            controller.setKeyLayout(.typewriterLinear)
+            controller.setVoiceLeadMode(.off)
             controller.setTempoBPM(120)
+            controller.setBaseVelocity(80)
             controller.setStrumChordsIsOn(false)
             controller.setOctave(0)
             textPerformer.mode = .script
@@ -375,7 +449,10 @@ final class KeyCaptureView: NSView {
         case .chordChartGuitar:
             setInputMode(.text)
             controller.setInstrument(.guitarOverdriven)
+            controller.setKeyLayout(.typewriterLinear)
+            controller.setVoiceLeadMode(.off)
             controller.setTempoBPM(120)
+            controller.setBaseVelocity(90)
             controller.setStrumChordsIsOn(true)
             controller.setOctave(-1)
             textPerformer.mode = .script
@@ -622,6 +699,10 @@ final class KeyCaptureView: NSView {
 
     private func presetTitle(for preset: Preset) -> String {
         switch preset {
+        case .melodicPiano:
+            return "Melodic Piano"
+        case .melodicRock:
+            return "Melodic Rock"
         case .prettyPiano:
             return "Pretty Piano (Rock-safe)"
         case .rockGuitar:
@@ -689,6 +770,8 @@ final class KeyCaptureView: NSView {
         presetPopup.action = #selector(presetChanged(_:))
         presetPopup.addItems(withTitles: [
             "Preset…",
+            "Melodic Piano",
+            "Melodic Rock",
             "Pretty Piano (Rock-safe)",
             "Rock Guitar (Crunch)",
             "Guitar Chug (16ths)",
@@ -733,6 +816,13 @@ final class KeyCaptureView: NSView {
         strumButton.target = self
         strumButton.action = #selector(strumToggled(_:))
 
+        layoutPopup.target = self
+        layoutPopup.action = #selector(layoutChanged(_:))
+        layoutPopup.addItems(withTitles: ["Typewriter", "Melodic"])
+
+        voiceLeadButton.target = self
+        voiceLeadButton.action = #selector(voiceLeadToggled(_:))
+
         modeSegmented.target = self
         modeSegmented.action = #selector(modeChanged(_:))
 
@@ -742,6 +832,13 @@ final class KeyCaptureView: NSView {
 
         powerChordButton.target = self
         powerChordButton.action = #selector(powerChordsToggled(_:))
+
+        velocitySlider.numberOfTickMarks = 0
+        velocitySlider.target = self
+        velocitySlider.action = #selector(velocityChanged(_:))
+
+        velocityLabel.font = .monospacedSystemFont(ofSize: 12, weight: .regular)
+        velocityLabel.textColor = .secondaryLabelColor
 
         octaveSlider.numberOfTickMarks = 6
         octaveSlider.allowsTickMarkValuesOnly = true
@@ -785,17 +882,29 @@ final class KeyCaptureView: NSView {
         bpmRow.alignment = .centerY
         bpmRow.spacing = 8
 
+        let velocityRow = NSStackView(views: [velocityLabel, velocitySlider])
+        velocityRow.orientation = .horizontal
+        velocityRow.alignment = .centerY
+        velocityRow.spacing = 8
+        velocitySlider.widthAnchor.constraint(equalToConstant: 80).isActive = true
+
         performanceGroup.orientation = .vertical
         performanceGroup.alignment = .leading
         performanceGroup.spacing = 6
         performanceGroup.addArrangedSubview(performanceTitle)
         performanceGroup.addArrangedSubview(playStyleSegmented)
         performanceGroup.addArrangedSubview(bpmRow)
+        performanceGroup.addArrangedSubview(velocityRow)
         performanceGroup.addArrangedSubview(strumButton)
         
         let mappingTitle = NSTextField(labelWithString: "Mapping")
         mappingTitle.font = .systemFont(ofSize: 12, weight: .semibold)
         mappingTitle.textColor = .secondaryLabelColor
+
+        let layoutRow = NSStackView(views: [layoutPopup, voiceLeadButton])
+        layoutRow.orientation = .horizontal
+        layoutRow.alignment = .centerY
+        layoutRow.spacing = 8
 
         let modeRow = NSStackView(views: [modeSegmented, scalePopup])
         modeRow.orientation = .horizontal
@@ -806,6 +915,7 @@ final class KeyCaptureView: NSView {
         mappingGroup.alignment = .leading
         mappingGroup.spacing = 6
         mappingGroup.addArrangedSubview(mappingTitle)
+        mappingGroup.addArrangedSubview(layoutRow)
         mappingGroup.addArrangedSubview(modeRow)
         mappingGroup.addArrangedSubview(powerChordButton)
         
@@ -931,6 +1041,8 @@ final class KeyCaptureView: NSView {
         soundFontButton.isHidden = uiMode == .simple
         builtInSoundButton.isHidden = uiMode == .simple
         scalePopup.isHidden = uiMode == .simple
+        layoutPopup.isHidden = uiMode == .simple
+        voiceLeadButton.isHidden = uiMode == .simple
         debugLabel.isHidden = uiMode == .simple
 
         armButton.state = controller.isArmed ? .on : .off
@@ -948,6 +1060,9 @@ final class KeyCaptureView: NSView {
         bpmStepper.integerValue = controller.tempoBPM
         strumButton.state = controller.strumChordsIsOn ? .on : .off
         
+        layoutPopup.selectItem(at: controller.currentKeyLayout == .melodic ? 1 : 0)
+        voiceLeadButton.state = controller.voiceLeadMode == .smooth ? .on : .off
+
         modeSegmented.selectedSegment = controller.mappingMode == .musical ? 0 : 1
         scalePopup.selectItem(at: controller.availableScales.firstIndex(of: controller.currentScale) ?? 0)
         
@@ -956,6 +1071,9 @@ final class KeyCaptureView: NSView {
         powerChordButton.isEnabled = true
         
         powerChordButton.state = controller.powerChordModeIsOn ? .on : .off
+
+        velocityLabel.stringValue = "Vel: \(controller.baseVelocity)"
+        velocitySlider.integerValue = Int(controller.baseVelocity)
         
         let octave = controller.octaveOffset >= 0 ? "+\(controller.octaveOffset)" : "\(controller.octaveOffset)"
         octaveLabel.stringValue = "Octave: \(octave)"
