@@ -16,12 +16,32 @@ Then:
 3. In **Keys** mode, press `z x c v b n m , . /` to play notes (the on-screen key map shows what each key plays).
 4. Pick a guitar sound from **Instrument** if you want.
 
+## Web Version (Try it now)
+
+A lightweight browser-based version lives in `docs/`. No install, no macOS required -- just open the link.
+
+**Try it:** once GitHub Pages is enabled, visit `https://<your-username>.github.io/making_music`
+
+To enable: repo Settings → Pages → Source: "Deploy from a branch" → Branch: `main`, folder: `/docs` → Save.
+
+Or run it locally:
+
+```bash
+cd docs && python3 -m http.server 8000
+# open http://localhost:8000
+```
+
+The web version uses FM synthesis via the Web Audio API. It covers Keys mode with all six presets, voice-leading, modifier keys, and the keyboard map. The native macOS app remains the full version (Text mode, SoundFont loading, touchpad, chug patterns, global listening).
+
 ## How To Play
 
 ### Keys Mode (play like an instrument)
 
 - **What it is:** QWERTY → notes (and optionally power chords).
-- **Default mapping:** Typewriter-linear (home row first), so typed letter flow maps to linear musical flow.
+- **Layout:**
+  - **Typewriter** (default): keys mapped linearly in typing order (home row first).
+  - **Melodic**: keys ordered by English letter frequency. The 8 most common letters (e, t, a, o, i, n, s, h) span two octaves, so natural typing stays melodic. Best with Voice Lead on.
+- **Voice Lead (Smooth):** each note snaps to the nearest octave of its pitch class relative to the last note, preventing wild jumps. Auto-enabled by Melodic presets.
 - **Scale Lock vs All Notes:**
   - **Scale Lock:** quantizes to a scale (good for “rock-safe” playing).
   - **All Notes:** every semitone (better for “I need specific notes”).
@@ -30,10 +50,12 @@ Then:
 - **Power chords:** toggles root + 5th + octave (more “guitar-ish”).
 - **Modifiers (Keys mode):**
   - `Shift+key`: temporary octave-up note
+  - `Opt+key`: temporary bass (octave-down) note
   - `Ctrl+key`: temporary chord hit (root + 5th + octave)
+- **Velocity:** base velocity slider sets your dynamic center; typing speed adjusts around it.
 - **Style:** switch between:
   - **Hold:** key down = note on, key up = note off (best for riffs)
-  - **Chug 8ths / 16ths:** hold a key and it auto-repeats on a beat grid at the current BPM (best for rock rhythm)
+  - **Chug 8ths / 16ths:** hold a key and it auto-repeats on a clock-aligned beat grid at the current BPM (best for rock rhythm)
 - **Touchpad Pad:** in Keys mode you can drag to play:
   - left/right = pitch
   - up/down = velocity
@@ -66,6 +88,7 @@ Text mode has two sub-modes:
 - `Cmd+Enter`: arm / disarm (start/stop)
 - `Ctrl+Opt+Cmd+M`: arm / disarm (works when global listening is enabled)
 - `Space` (hold): sustain (Keys mode, and pad sustain)
+- `Opt+key`: bass note (octave-down, Keys mode)
 - `[` / `]`: octave down / up (Keys mode)
 - `Tab`: toggle power-chord mode
 - `\`: toggle Scale Lock / All Notes

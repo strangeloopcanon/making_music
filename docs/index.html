@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Making Music — Type to Play</title>
+    <meta name="description" content="Turn your keyboard into a musical instrument. Type to play melodies, chords, and rhythms — right in your browser.">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div id="app">
+        <header>
+            <h1>Making Music</h1>
+            <div id="status">Press Enter or click Play to start</div>
+        </header>
+
+        <div class="toolbar">
+            <button id="arm-btn">▶ Play</button>
+            <span class="sep"></span>
+
+            <label>Preset
+                <select id="preset"></select>
+            </label>
+            <label>Instrument
+                <select id="instrument"></select>
+            </label>
+            <label>Scale
+                <select id="scale"></select>
+            </label>
+            <label>Layout
+                <select id="layout"></select>
+            </label>
+
+            <span class="sep"></span>
+
+            <label>
+                <input type="checkbox" id="voice-lead">
+                Voice Lead
+            </label>
+            <label>
+                <input type="checkbox" id="power-chords">
+                Power Chords
+            </label>
+        </div>
+
+        <div id="keyboard"></div>
+
+        <div class="help">
+            <kbd>Enter</kbd> play / pause &nbsp;
+            <kbd>Esc</kbd> panic &nbsp;
+            <kbd>Shift</kbd>+key = octave up &nbsp;
+            <kbd>Alt</kbd>+key = bass &nbsp;
+            <kbd>Ctrl</kbd>+key = chord &nbsp;
+            <kbd>[</kbd> <kbd>]</kbd> shift octave
+        </div>
+    </div>
+
+    <script type="module" src="app.js"></script>
+</body>
+</html>
