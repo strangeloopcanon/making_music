@@ -10,6 +10,14 @@ import { AudioEngine, INSTRUMENTS, INSTRUMENT_LIST } from './audio.js';
 // --- Presets ---
 
 const PRESETS = {
+    grandPiano: {
+        name: 'Grand Piano',
+        instrument: 'grandPiano',
+        scale: 'naturalMinor',
+        layout: 'melodic',
+        voiceLead: true,
+        powerChords: false,
+    },
     melodicPiano: {
         name: 'Melodic Piano',
         instrument: 'piano',
@@ -81,7 +89,7 @@ class App {
 
         this._setupUI();
         this._setupKeyboard();
-        this._applyPreset('melodicPiano');
+        this._applyPreset('grandPiano');
     }
 
     // --- Keyboard handling ---
