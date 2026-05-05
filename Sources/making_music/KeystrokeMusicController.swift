@@ -186,7 +186,7 @@ final class KeystrokeMusicController: @unchecked Sendable {
           Preset     Use Preset for “sounds good” setups
           UI         Simple hides most buttons; Advanced shows everything
           Style      (Keys) Use Hold / Chug in the UI for auto-repeat rhythm
-          SoundFont  Use the SoundFont button to load a high-quality .sf2 for more realistic piano/guitar
+          SoundFont  Use the SoundFont button to load a high-quality .sf2 for more realistic piano/guitar/organ
           Range      Use Octave in the UI to shift note range
           Shift+key  Temporary octave-up note
           Opt+key    Temporary bass (octave-down) note
@@ -225,6 +225,11 @@ final class KeystrokeMusicController: @unchecked Sendable {
                   Script Style: Ballad Pick / Rock Strum / Power Chug / Synth Pulse.
           Chords: paste a chord chart like “Em D C G D/F#” (use Songbook for starters).
 
+        Practice (Keys Mode)
+          Pick Baba O'Riley or Stairway to Heaven from Practice.
+          Turn Play ON and type the highlighted cue key; the app plays the next note or chord.
+          Wrong keys do nothing, so a good typist can learn the part without learning piano fingering first.
+
         Songbook (Text Mode)
           “Nothing Else Matters”:
              Em D C G
@@ -236,6 +241,8 @@ final class KeystrokeMusicController: @unchecked Sendable {
              C G Am F
           “Baba O'Riley”:
              F C Bb
+          “Stairway to Heaven”:
+             Am Am/G# C/G D/F# Fmaj7 G Am
           “Highway to Hell”:
              A D/F# G
           “With Arms Wide Open”:

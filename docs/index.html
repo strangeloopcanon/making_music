@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Making Music — Type to Play</title>
     <meta name="description" content="Turn your keyboard into a musical instrument. Type to play melodies, chords, and rhythms — right in your browser.">
+    <link rel="icon" href="data:,">
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -30,6 +31,10 @@
             <label>Layout
                 <select id="layout"></select>
             </label>
+            <label>Song
+                <select id="song"></select>
+            </label>
+            <button id="restart-song">Restart</button>
 
             <span class="sep"></span>
 
@@ -44,6 +49,7 @@
         </div>
 
         <div id="keyboard"></div>
+        <div id="trainer"></div>
 
         <div class="help">
             <kbd>Enter</kbd> play / pause &nbsp;
@@ -51,7 +57,8 @@
             <kbd>Shift</kbd>+key = octave up &nbsp;
             <kbd>Alt</kbd>+key = bass &nbsp;
             <kbd>Ctrl</kbd>+key = chord &nbsp;
-            <kbd>[</kbd> <kbd>]</kbd> shift octave
+            <kbd>[</kbd> <kbd>]</kbd> shift octave &nbsp;
+            Song trainer: type the highlighted cue key
         </div>
     </div>
 

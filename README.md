@@ -1,6 +1,6 @@
 # making_music
 
-Turn your Mac keyboard into a playable instrument. Press keys to play riffs, type chord symbols to hit chord changes, and use the on-screen touchpad pad for expressive slides. Piano is the default, with a few guitar‑ish sounds built in.
+Turn your Mac keyboard into a playable instrument. Press keys to play riffs, type chord symbols to hit chord changes, and use the on-screen touchpad pad for expressive slides. If you are a strong typist but not a pianist, use guided Practice mode: pick a song, type the highlighted cue key, and the app plays the next note or chord.
 
 ## Quick Start
 
@@ -13,8 +13,9 @@ Then:
 
 1. Click the app window.
 2. Press `Cmd+Enter` until the status says `ARMED`.
-3. In **Keys** mode, press `z x c v b n m , . /` to play notes (the on-screen key map shows what each key plays).
-4. Pick a guitar sound from **Instrument** if you want.
+3. To play immediately, choose **Practice… → Baba O'Riley** or **Practice… → Stairway to Heaven**.
+4. Turn **Play** on, then type the highlighted key. Wrong keys do nothing.
+5. In free-play **Keys** mode, press `z x c v b n m , . /` to play notes (the on-screen key map shows what each key plays).
 
 ## Web Version (Try it now)
 
@@ -31,7 +32,7 @@ cd docs && python3 -m http.server 8000
 # open http://localhost:8000
 ```
 
-The web version uses FM synthesis via the Web Audio API. It covers Keys mode with all six presets, voice-leading, modifier keys, and the keyboard map. The native macOS app remains the full version (Text mode, SoundFont loading, touchpad, chug patterns, global listening).
+The web version uses FM synthesis via the Web Audio API. It covers Keys mode, presets, voice-leading, modifier keys, the keyboard map, and the same guided song trainer for Baba O'Riley and Stairway to Heaven. The native macOS app remains the full version (Text mode, SoundFont loading, touchpad, chug patterns, global listening).
 
 ## How To Play
 
@@ -106,14 +107,18 @@ Keys mode controls in the UI:
 
 ### Practice Songbook (Keys mode)
 
-- Open **Practice…** and pick one of the seven songs.
+- Open **Practice…** and pick one of the eight songs.
 - The app auto-applies that song’s recommended preset (tone + mapping + rhythm defaults).
+- **Baba O'Riley** and **Stairway to Heaven** are guided typing arrangements:
+  - the next cue key is highlighted on the keyboard map
+  - press that key to play the next note or chord
+  - wrong keys are ignored, so you can learn it like a typing drill
 - The help panel shows multi-section practice lines with exact keyboard keys, for example:
   - `Em[d]  D[s]  C[a]  G[g]` style chord-to-key hints
   - slash chords include bass/root hints like `D/F#[f→d]`
 - Use **Paste chords from Clipboard** to generate practice lines from any chart text.
 
-## Sound (Piano + Guitar‑ish)
+## Sound (Piano + Guitar + Organ)
 
 - Use the **Instrument** dropdown (or menubar `MM` → **Instrument**) to switch sounds.
 - For much better realism, load a SoundFont:
@@ -121,11 +126,25 @@ Keys mode controls in the UI:
   - Press **Built-in** to revert to the system sounds.
   - If `SoundFonts/GeneralUser-GS-v1.471.sf2` exists, the app will auto-load it on startup.
 - What the guitar options mean:
+  - `Guitar (Acoustic)`: steel-string acoustic; best for picked parts
   - `Guitar (Clean)`: electric guitar with little/no breakup (clearer)
   - `Guitar (Overdriven)`: moderate “crunch” (classic rock)
   - `Guitar (Distortion)`: heavier saturation (more aggressive)
+- `Organ`: drawbar-style organ; best for Baba O'Riley-style pulse practice.
 
 ## Song Examples
+
+### “Baba O'Riley” (guided typing)
+
+1. Choose **Practice → Baba O'Riley**.
+2. Turn **Play** on.
+3. Type the highlighted cue key. The app advances through the pulse and chord landings.
+
+### “Stairway to Heaven” (guided typing)
+
+1. Choose **Practice → Stairway to Heaven**.
+2. Turn **Play** on.
+3. Type the highlighted cue key. The app advances through a slow acoustic arpeggio walk and chord landings.
 
 ### “Nothing Else Matters” (typing arpeggio)
 

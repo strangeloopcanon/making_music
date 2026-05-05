@@ -103,4 +103,26 @@ expectEqual(VoiceLeading.nearestOctave(pitchClass: 7, to: 52), 55, "VL: G neares
 expectEqual(VoiceLeading.smooth(rawNote: 79, reference: 55), 55, "VL smooth: raw G5=79 → G3=55 near ref 55")
 expectEqual(VoiceLeading.smooth(rawNote: 52, reference: nil), 52, "VL smooth: nil reference returns raw")
 
+// Guided practice songbook.
+guard let baba = PracticeSongbook.arrangement(id: "baba-o-riley") else {
+    fail("Expected Baba O'Riley practice arrangement")
+}
+expectEqual(baba.recommendedTone, .organ, "Baba O'Riley should use organ tone")
+expectTrue(baba.sections.count >= 2, "Baba O'Riley should have multiple guided sections")
+expectEqual(baba.sections[0].steps[0].cueKey, "b", "Baba first cue")
+expectEqual(baba.sections[0].steps[0].label, "F4", "Baba first note label")
+expectEqual(baba.sections[0].steps[0].midiNotes, [65], "Baba first note MIDI")
+
+guard let stairway = PracticeSongbook.arrangement(id: "stairway-to-heaven") else {
+    fail("Expected Stairway practice arrangement")
+}
+expectEqual(stairway.recommendedTone, .acousticGuitar, "Stairway should use acoustic guitar tone")
+expectEqual(stairway.sections[0].steps[0].cueKey, "s", "Stairway first cue")
+expectEqual(stairway.sections[0].steps[0].label, "A3", "Stairway first note label")
+expectEqual(stairway.sections[0].steps[0].midiNotes, [57], "Stairway first note MIDI")
+expectTrue(
+    stairway.sections.flatMap(\.steps).allSatisfy { !$0.cueKey.isEmpty && !$0.midiNotes.isEmpty },
+    "Practice steps should all have cue keys and MIDI notes"
+)
+
 print("ok")

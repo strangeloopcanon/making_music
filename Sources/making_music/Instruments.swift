@@ -2,6 +2,8 @@ import Foundation
 
 enum Instrument: String, CaseIterable, Sendable {
     case piano = "Piano"
+    case organ = "Organ"
+    case guitarAcoustic = "Guitar (Acoustic)"
     case guitarClean = "Guitar (Clean)"
     case guitarOverdriven = "Guitar (Overdriven)"
     case guitarDistortion = "Guitar (Distortion)"
@@ -11,6 +13,10 @@ enum Instrument: String, CaseIterable, Sendable {
         switch self {
         case .piano:
             return 0
+        case .organ:
+            return 16 // GM 17: Drawbar Organ
+        case .guitarAcoustic:
+            return 25 // GM 26: Acoustic Guitar (steel)
         case .guitarClean:
             return 27 // GM 28: Electric Guitar (clean)
         case .guitarOverdriven:

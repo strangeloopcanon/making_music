@@ -8,6 +8,8 @@
     --text: #ddddf0;
     --text-dim: #7777aa;
     --accent: #4488ff;
+    --cue: #f4b942;
+    --cue-soft: rgba(244, 185, 66, 0.18);
     --accent-glow: rgba(68, 136, 255, 0.35);
     --key-bg: #1a1a36;
     --key-active: rgba(68, 136, 255, 0.25);
@@ -176,6 +178,12 @@ header h1 {
     box-shadow: 0 0 12px var(--accent-glow), inset 0 0 8px var(--accent-glow);
 }
 
+.key-cap.cue {
+    background: var(--cue-soft);
+    border-color: var(--cue);
+    box-shadow: 0 0 12px rgba(244, 185, 66, 0.22);
+}
+
 .key-label {
     font-size: 0.72rem;
     font-weight: 600;
@@ -197,6 +205,77 @@ header h1 {
 
 .key-cap.active .key-note {
     color: var(--accent);
+}
+
+.key-cap.cue .key-note {
+    color: var(--cue);
+}
+
+/* --- Trainer --- */
+
+#trainer {
+    width: 100%;
+    min-height: 8.5rem;
+    padding: 0.85rem 1rem;
+    background: rgba(20, 20, 42, 0.88);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    color: var(--text);
+    font-size: 0.82rem;
+    line-height: 1.45;
+}
+
+.trainer-title {
+    font-weight: 700;
+    color: #f5d58a;
+    margin-bottom: 0.2rem;
+}
+
+.trainer-line,
+.trainer-muted,
+.trainer-feedback {
+    color: var(--text-dim);
+}
+
+.trainer-next {
+    margin: 0.35rem 0;
+    color: var(--text);
+    font-weight: 600;
+}
+
+.trainer-next kbd {
+    display: inline-block;
+    min-width: 1.8rem;
+    text-align: center;
+    padding: 0.1rem 0.4rem;
+    margin: 0 0.2rem;
+    background: var(--cue-soft);
+    color: var(--cue);
+    border: 1px solid var(--cue);
+    border-radius: 4px;
+}
+
+.trainer-cues {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.25rem;
+    margin-top: 0.45rem;
+}
+
+.trainer-cues span {
+    padding: 0.16rem 0.38rem;
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    color: var(--text-dim);
+    font-family: 'SF Mono', 'Cascadia Mono', 'Fira Code', monospace;
+    font-size: 0.72rem;
+}
+
+.trainer-cues span.next {
+    color: #1b1403;
+    background: var(--cue);
+    border-color: var(--cue);
 }
 
 /* --- Help --- */

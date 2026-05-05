@@ -6,6 +6,12 @@ final class KeyboardMapView: NSView {
     private let controller: KeystrokeMusicController
     private var capsByKey: [String: KeyCapView] = [:]
 
+    struct Cue {
+        var key: String
+        var noteName: String
+        var detail: String
+    }
+
     init(controller: KeystrokeMusicController) {
         self.controller = controller
         super.init(frame: .zero)
@@ -17,14 +23,19 @@ final class KeyboardMapView: NSView {
         nil
     }
 
-    func render() {
+    func render(cue: Cue? = nil) {
         let held = controller.heldKeys
 
         for (key, cap) in capsByKey {
+            if let cue, cue.key == key {
+                cap.update(noteName: cue.noteName, chordLabel: cue.detail, isHeld: held.contains(key), isCued: true)
+                continue
+            }
+
             if let display = controller.display(forKey: key) {
-                cap.update(noteName: display.noteName, chordLabel: display.chordLabel, isHeld: held.contains(key))
+                cap.update(noteName: display.noteName, chordLabel: display.chordLabel, isHeld: held.contains(key), isCued: false)
             } else {
-                cap.update(noteName: "—", chordLabel: nil, isHeld: false)
+                cap.update(noteName: "—", chordLabel: nil, isHeld: false, isCued: false)
             }
         }
     }
@@ -100,13 +111,16 @@ private final class KeyCapView: NSView {
         nil
     }
 
-    func update(noteName: String, chordLabel: String?, isHeld: Bool) {
+    func update(noteName: String, chordLabel: String?, isHeld: Bool, isCued: Bool) {
         noteLabel.stringValue = noteName
         self.chordLabel.stringValue = chordLabel ?? ""
 
         if isHeld {
             layer?.backgroundColor = NSColor.controlAccentColor.withAlphaComponent(0.22).cgColor
             layer?.borderColor = NSColor.controlAccentColor.withAlphaComponent(0.7).cgColor
+        } else if isCued {
+            layer?.backgroundColor = NSColor.systemYellow.withAlphaComponent(0.20).cgColor
+            layer?.borderColor = NSColor.systemYellow.withAlphaComponent(0.75).cgColor
         } else {
             layer?.backgroundColor = NSColor.controlBackgroundColor.withAlphaComponent(0.55).cgColor
             layer?.borderColor = NSColor.separatorColor.cgColor
@@ -146,7 +160,6 @@ private final class KeyCapView: NSView {
             labels.centerYAnchor.constraint(equalTo: centerYAnchor, constant: 2),
         ])
 
-        update(noteName: "—", chordLabel: nil, isHeld: false)
+        update(noteName: "—", chordLabel: nil, isHeld: false, isCued: false)
     }
 }
-
