@@ -838,7 +838,9 @@ final class KeyCaptureView: NSView {
             if let instructions = plan.instructions {
                 lines.append(instructions)
             }
-            lines.append("Turn Play ON, then type the highlighted key. Wrong keys do nothing, so you can keep your hands on the keyboard.")
+            lines.append("No compound keys: type only the letters shown in the sentence. The note name after ':' is what the app plays.")
+            lines.append("Full sentence: \(guidedCueSentence(plan: plan))")
+            lines.append("Turn Play ON and type normally. Wrong keys do nothing, so you can keep your hands on the keyboard.")
             if let feedback = lastPracticeFeedback {
                 lines.append("Last: \(feedback)")
             }
@@ -848,6 +850,7 @@ final class KeyCaptureView: NSView {
                 lines.append("")
                 lines.append("Now: \(section.title)  \(practiceStepIndex + 1)/\(section.guideSteps.count)")
                 lines.append("Next: \(step.cueKey.uppercased()) -> \(step.label)")
+                lines.append("Remaining: \(guidedCueSentence(section: section, startIndex: practiceStepIndex))")
                 lines.append("Type: \(guidedCueLine(section: section, currentIndex: practiceStepIndex, limit: 40))")
             }
 
@@ -875,6 +878,15 @@ final class KeyCaptureView: NSView {
         }
 
         return lines.joined(separator: "\n")
+    }
+
+    private func guidedCueSentence(plan: PracticePlan) -> String {
+        plan.sections.flatMap(\.guideSteps).map(\.cueKey).joined()
+    }
+
+    private func guidedCueSentence(section: PracticeSection, startIndex: Int) -> String {
+        guard startIndex >= 0, startIndex < section.guideSteps.count else { return "" }
+        return section.guideSteps[startIndex...].map(\.cueKey).joined()
     }
 
     private func guidedCueLine(section: PracticeSection, currentIndex: Int?, limit: Int) -> String {

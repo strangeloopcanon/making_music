@@ -110,6 +110,7 @@ Keys mode controls in the UI:
 - Open **Practice…** and pick one of the eight songs.
 - The app auto-applies that song’s recommended preset (tone + mapping + rhythm defaults).
 - **Baba O'Riley** and **Stairway to Heaven** are guided typing arrangements:
+  - the trainer shows the full sentence to type
   - the next cue key is highlighted on the keyboard map
   - press that key to play the next note or chord
   - wrong keys are ignored, so you can learn it like a typing drill

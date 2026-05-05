@@ -410,6 +410,10 @@ class App {
         }
     }
 
+    _songSentence(steps = this._flatSongSteps()) {
+        return steps.map(step => step.key).join('');
+    }
+
     _lastTs = performance.now();
 
     _velocity() {
@@ -647,10 +651,15 @@ class App {
         const upcoming = steps.slice(this.songStepIndex, this.songStepIndex + 18)
             .map((s, index) => `<span class="${index === 0 ? 'next' : ''}">${s.key.toUpperCase()}:${s.label}</span>`)
             .join('');
+        const fullSentence = this._songSentence(steps);
+        const remainingSentence = this._songSentence(steps.slice(this.songStepIndex));
 
         this._$trainer.innerHTML = `
             <div class="trainer-title">${song.name}</div>
             <div class="trainer-line">${song.instructions}</div>
+            <div class="trainer-line">No compound keys: type only the letters in the sentence. The note after ':' is what the app plays.</div>
+            <div class="trainer-sentence"><span>Full sentence</span><code>${fullSentence}</code></div>
+            <div class="trainer-sentence"><span>Remaining</span><code>${remainingSentence}</code></div>
             <div class="trainer-line">Now: ${step.sectionTitle} ${step.sectionStepIndex + 1}/${step.sectionStepCount}</div>
             <div class="trainer-next">Next key <kbd>${step.key.toUpperCase()}</kbd> plays ${step.label}</div>
             <div class="trainer-cues">${upcoming}</div>

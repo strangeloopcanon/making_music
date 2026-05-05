@@ -112,6 +112,8 @@ expectTrue(baba.sections.count >= 2, "Baba O'Riley should have multiple guided s
 expectEqual(baba.sections[0].steps[0].cueKey, "b", "Baba first cue")
 expectEqual(baba.sections[0].steps[0].label, "F4", "Baba first note label")
 expectEqual(baba.sections[0].steps[0].midiNotes, [65], "Baba first note MIDI")
+expectTrue(baba.cueSentence.hasPrefix("babaoriley"), "Baba should expose a full cue sentence")
+expectEqual(String(baba.sections[0].cueSentence.prefix(10)), "babaoriley", "Baba section cue sentence")
 
 guard let stairway = PracticeSongbook.arrangement(id: "stairway-to-heaven") else {
     fail("Expected Stairway practice arrangement")
@@ -120,6 +122,7 @@ expectEqual(stairway.recommendedTone, .acousticGuitar, "Stairway should use acou
 expectEqual(stairway.sections[0].steps[0].cueKey, "s", "Stairway first cue")
 expectEqual(stairway.sections[0].steps[0].label, "A3", "Stairway first note label")
 expectEqual(stairway.sections[0].steps[0].midiNotes, [57], "Stairway first note MIDI")
+expectTrue(stairway.cueSentence.hasPrefix("stairwaytoheaven"), "Stairway should expose a full cue sentence")
 expectTrue(
     stairway.sections.flatMap(\.steps).allSatisfy { !$0.cueKey.isEmpty && !$0.midiNotes.isEmpty },
     "Practice steps should all have cue keys and MIDI notes"
