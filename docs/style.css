@@ -303,6 +303,74 @@ header h1 {
     border-color: var(--cue);
 }
 
+/* --- Custom Composer --- */
+
+.custom-composer {
+    width: 100%;
+    padding: 0.85rem 1rem;
+    background: rgba(20, 20, 42, 0.88);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+}
+
+.custom-composer label {
+    display: block;
+    margin-bottom: 0.4rem;
+    color: #f5d58a;
+    font-weight: 700;
+    font-size: 0.82rem;
+}
+
+.custom-composer textarea {
+    display: block;
+    width: 100%;
+    min-height: 8rem;
+    resize: vertical;
+    padding: 0.6rem;
+    background: var(--surface-2);
+    color: var(--text);
+    border: 1px solid var(--border);
+    border-radius: 5px;
+    font-family: 'SF Mono', 'Cascadia Mono', 'Fira Code', monospace;
+    font-size: 0.78rem;
+    line-height: 1.45;
+}
+
+.custom-actions {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    margin-top: 0.6rem;
+}
+
+.custom-actions button {
+    font-family: inherit;
+    font-size: 0.78rem;
+    padding: 0.38rem 0.7rem;
+    background: var(--cue);
+    color: #1b1403;
+    border: 1px solid var(--cue);
+    border-radius: 5px;
+    cursor: pointer;
+    font-weight: 700;
+}
+
+#custom-error {
+    color: #ff9a9a;
+    font-size: 0.78rem;
+}
+
+.custom-help {
+    margin-top: 0.45rem;
+    color: var(--text-dim);
+    font-size: 0.76rem;
+}
+
+.custom-help code {
+    color: #f5d58a;
+    font-family: 'SF Mono', 'Cascadia Mono', 'Fira Code', monospace;
+}
+
 /* --- Help --- */
 
 .help {

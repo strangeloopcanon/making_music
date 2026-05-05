@@ -114,6 +114,12 @@ Keys mode controls in the UI:
   - the next cue key is highlighted on the keyboard map
   - press that key to play the next note or chord
   - wrong keys are ignored, so you can learn it like a typing drill
+- Pick **Custom song…** in the web version to compose your own guided instrument:
+  - `sentence: hellomusic`
+  - `notes: C4 D4 E4 G4 [C4,E4,G4]/1`
+  - or direct pairs like `h:C4 e:D4 l:E4 o:[C4,E4,G4]/1`
+  - the part before `:` is the key to type; the part after `:` is the note or chord it plays
+  - supported instrument keys include `piano`, `organ`, `guitarAcoustic`, and `guitarOverdriven`
 - The help panel shows multi-section practice lines with exact keyboard keys, for example:
   - `Em[d]  D[s]  C[a]  G[g]` style chord-to-key hints
   - slash chords include bass/root hints like `D/F#[f→d]`

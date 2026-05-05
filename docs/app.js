@@ -103,9 +103,184 @@ function keyedSteps(cueText, seeds) {
     }));
 }
 
+const NOTE_PITCH_CLASS = {
+    c: 0, 'c#': 1, db: 1,
+    d: 2, 'd#': 3, eb: 3,
+    e: 4,
+    f: 5, 'f#': 6, gb: 6,
+    g: 7, 'g#': 8, ab: 8,
+    a: 9, 'a#': 10, bb: 10,
+    b: 11,
+};
+
+const CUSTOM_SCORE_EXAMPLE = `title: My first song
+tempo: 100
+instrument: piano
+sentence: hellomusic
+notes: C4 D4 E4 G4 [C4,E4,G4]/1 A4 G4 E4 D4 C4
+
+# Direct form also works:
+# h:C4 e:D4 l:E4 l:G4 o:[C4,E4,G4]/1`;
+
+function escapeHTML(value) {
+    return String(value).replace(/[&<>"']/g, ch => ({
+        '&': '&amp;',
+        '<': '&lt;',
+        '>': '&gt;',
+        '"': '&quot;',
+        "'": '&#39;',
+    }[ch]));
+}
+
+function noteNameToMidi(name) {
+    const match = String(name).trim().match(/^([A-Ga-g])([#b]?)(-?\d+)$/);
+    if (!match) throw new Error(`Bad note "${name}"`);
+
+    const pitch = `${match[1].toLowerCase()}${match[2] ?? ''}`;
+    const pc = NOTE_PITCH_CLASS[pitch];
+    if (pc == null) throw new Error(`Bad note "${name}"`);
+
+    const octave = Number.parseInt(match[3], 10);
+    const midi = (octave + 1) * 12 + pc;
+    if (midi < 0 || midi > 127) throw new Error(`Note out of range "${name}"`);
+    return midi;
+}
+
+function parseMusicalValue(rawValue) {
+    let value = String(rawValue).trim();
+    if (!value) throw new Error('Missing note value');
+
+    let accent = false;
+    if (value.startsWith('!')) {
+        accent = true;
+        value = value.slice(1).trim();
+    }
+
+    let beats = 0.5;
+    const durationMatch = value.match(/\/([0-9]+(?:\.[0-9]+)?)$/);
+    if (durationMatch) {
+        beats = Number.parseFloat(durationMatch[1]);
+        value = value.slice(0, durationMatch.index).trim();
+    }
+
+    let noteNames;
+    if (value.startsWith('[') && value.endsWith(']')) {
+        noteNames = value.slice(1, -1).split(/[,+]/).map(part => part.trim()).filter(Boolean);
+    } else if (value.includes('+')) {
+        noteNames = value.split('+').map(part => part.trim()).filter(Boolean);
+    } else {
+        noteNames = [value];
+    }
+
+    if (!noteNames.length) throw new Error(`No notes in "${rawValue}"`);
+
+    const notes = noteNames.map(noteNameToMidi);
+    return {
+        label: noteNames.length > 1 ? noteNames.join('+') : noteNames[0],
+        notes,
+        kind: notes.length > 1 ? 'chord' : 'note',
+        beats,
+        accent,
+    };
+}
+
+function parseCustomScore(text) {
+    const lines = String(text).split(/\r?\n/);
+    let title = 'Custom song';
+    let tempoBPM = 100;
+    let instrument = null;
+    let preset = null;
+    let sentence = '';
+    let noteLine = '';
+    const directLines = [];
+
+    for (const rawLine of lines) {
+        const line = rawLine.trim();
+        if (!line || line.startsWith('#')) continue;
+
+        const field = line.match(/^([a-zA-Z]+)\s*:\s*(.*)$/);
+        if (field) {
+            const key = field[1].toLowerCase();
+            const value = field[2].trim();
+            if (key === 'title') {
+                title = value || title;
+                continue;
+            }
+            if (key === 'tempo') {
+                tempoBPM = Math.max(40, Math.min(240, Number.parseInt(value, 10) || tempoBPM));
+                continue;
+            }
+            if (key === 'instrument') {
+                instrument = value;
+                continue;
+            }
+            if (key === 'preset') {
+                preset = value;
+                continue;
+            }
+            if (key === 'sentence') {
+                sentence = value.toLowerCase().replace(/[^a-z0-9]/g, '');
+                continue;
+            }
+            if (key === 'notes') {
+                noteLine += `${value} `;
+                continue;
+            }
+        }
+
+        directLines.push(line);
+    }
+
+    let steps = [];
+    if (noteLine.trim()) {
+        const cues = sentence.split('');
+        if (!cues.length) throw new Error('Add a sentence: line when using notes:');
+
+        steps = noteLine.trim().split(/\s+/).map((token, index) => ({
+            key: cues[index % cues.length],
+            ...parseMusicalValue(token),
+        }));
+    } else {
+        const tokens = directLines.join(' ').trim().split(/\s+/).filter(Boolean);
+        steps = tokens.map(token => {
+            const split = token.indexOf(':');
+            if (split <= 0) throw new Error(`Expected key:note token, got "${token}"`);
+            const cue = token.slice(0, split).toLowerCase().replace(/[^a-z0-9]/g, '');
+            if (cue.length !== 1) throw new Error(`Cue key must be one letter or digit in "${token}"`);
+            return {
+                key: cue,
+                ...parseMusicalValue(token.slice(split + 1)),
+            };
+        });
+    }
+
+    if (!steps.length) throw new Error('Add notes before loading a custom song');
+    if (preset && !PRESETS[preset]) throw new Error(`Unknown preset "${preset}"`);
+    if (instrument && !INSTRUMENTS[instrument]) throw new Error(`Unknown instrument "${instrument}"`);
+
+    return {
+        name: title,
+        preset,
+        instrument,
+        tempoBPM,
+        instructions: 'Custom score loaded. Type the full sentence or follow the highlighted cue.',
+        sections: [
+            {
+                title: 'Custom score',
+                summary: 'Your typed arrangement',
+                steps,
+            },
+        ],
+    };
+}
+
 const SONGS = {
     none: {
         name: 'Song trainer...',
+        sections: [],
+    },
+    custom: {
+        name: 'Custom song...',
         sections: [],
     },
     babaORiley: {
@@ -224,6 +399,8 @@ class App {
         this.songId = 'none';
         this.songStepIndex = 0;
         this.trainerFeedback = '';
+        this.customSong = null;
+        this.customError = '';
 
         this.held = new Set();          // key chars currently down
         this.heldNotes = new Map();     // key → Set<midi>
@@ -356,6 +533,9 @@ class App {
     }
 
     _currentSong() {
+        if (this.songId === 'custom') {
+            return this.customSong;
+        }
         const song = SONGS[this.songId];
         return song && song.sections.length ? song : null;
     }
@@ -484,7 +664,9 @@ class App {
         this.trainerFeedback = '';
 
         const song = SONGS[id];
-        if (song?.preset) {
+        if (id === 'custom') {
+            this._renderCustomComposer();
+        } else if (song?.preset) {
             this._applyPreset(song.preset);
         }
 
@@ -492,6 +674,7 @@ class App {
         this._renderStatus();
         this._renderKeyboard();
         this._renderTrainer();
+        this._renderCustomComposer();
     }
 
     _restartSong() {
@@ -500,6 +683,33 @@ class App {
         this._renderStatus();
         this._renderKeyboard();
         this._renderTrainer();
+    }
+
+    _loadCustomSong() {
+        try {
+            const song = parseCustomScore(this._$customScore.value);
+            this.customSong = song;
+            this.customError = '';
+            this.songId = 'custom';
+            this.songStepIndex = 0;
+            this.trainerFeedback = 'Custom song loaded.';
+
+            if (song.preset) {
+                this._applyPreset(song.preset);
+            } else if (song.instrument) {
+                this.audio.setInstrument(song.instrument);
+                this._$instrument.value = song.instrument;
+            }
+
+            this._$song.value = 'custom';
+            this._renderStatus();
+            this._renderKeyboard();
+            this._renderTrainer();
+            this._renderCustomComposer();
+        } catch (err) {
+            this.customError = err instanceof Error ? err.message : String(err);
+            this._renderCustomComposer();
+        }
     }
 
     // --- UI setup ---
@@ -514,6 +724,10 @@ class App {
         this._$song = document.getElementById('song');
         this._$restartSong = document.getElementById('restart-song');
         this._$trainer = document.getElementById('trainer');
+        this._$customComposer = document.getElementById('custom-composer');
+        this._$customScore = document.getElementById('custom-score');
+        this._$loadCustom = document.getElementById('load-custom');
+        this._$customError = document.getElementById('custom-error');
         this._$voiceLead = document.getElementById('voice-lead');
         this._$powerChords = document.getElementById('power-chords');
         this._$keyboard = document.getElementById('keyboard');
@@ -530,6 +744,8 @@ class App {
         this._$preset.addEventListener('change', () => this._applyPreset(this._$preset.value));
         this._$song.addEventListener('change', () => this._applySong(this._$song.value));
         this._$restartSong.addEventListener('click', () => this._restartSong());
+        this._$loadCustom.addEventListener('click', () => this._loadCustomSong());
+        this._$customScore.value = CUSTOM_SCORE_EXAMPLE;
         this._$instrument.addEventListener('change', () => {
             this.audio.setInstrument(this._$instrument.value);
         });
@@ -554,6 +770,7 @@ class App {
         this._buildKeyboard();
         this._renderStatus();
         this._renderTrainer();
+        this._renderCustomComposer();
     }
 
     _populateSelect(el, items) {
@@ -637,7 +854,10 @@ class App {
     _renderTrainer() {
         const song = this._currentSong();
         if (!song) {
-            this._$trainer.innerHTML = `<span class="trainer-muted">Pick Baba O'Riley or Stairway to Heaven from Song, press Play, then type the highlighted key.</span>`;
+            const message = this.songId === 'custom'
+                ? 'Edit the custom score, then click Load custom song.'
+                : 'Pick Baba O\'Riley, Stairway to Heaven, or Custom song from Song.';
+            this._$trainer.innerHTML = `<span class="trainer-muted">${escapeHTML(message)}</span>`;
             return;
         }
 
@@ -649,22 +869,28 @@ class App {
         }
 
         const upcoming = steps.slice(this.songStepIndex, this.songStepIndex + 18)
-            .map((s, index) => `<span class="${index === 0 ? 'next' : ''}">${s.key.toUpperCase()}:${s.label}</span>`)
+            .map((s, index) => `<span class="${index === 0 ? 'next' : ''}">${escapeHTML(s.key.toUpperCase())}:${escapeHTML(s.label)}</span>`)
             .join('');
         const fullSentence = this._songSentence(steps);
         const remainingSentence = this._songSentence(steps.slice(this.songStepIndex));
 
         this._$trainer.innerHTML = `
-            <div class="trainer-title">${song.name}</div>
-            <div class="trainer-line">${song.instructions}</div>
+            <div class="trainer-title">${escapeHTML(song.name)}</div>
+            <div class="trainer-line">${escapeHTML(song.instructions)}</div>
             <div class="trainer-line">No compound keys: type only the letters in the sentence. The note after ':' is what the app plays.</div>
-            <div class="trainer-sentence"><span>Full sentence</span><code>${fullSentence}</code></div>
-            <div class="trainer-sentence"><span>Remaining</span><code>${remainingSentence}</code></div>
-            <div class="trainer-line">Now: ${step.sectionTitle} ${step.sectionStepIndex + 1}/${step.sectionStepCount}</div>
-            <div class="trainer-next">Next key <kbd>${step.key.toUpperCase()}</kbd> plays ${step.label}</div>
+            <div class="trainer-sentence"><span>Full sentence</span><code>${escapeHTML(fullSentence)}</code></div>
+            <div class="trainer-sentence"><span>Remaining</span><code>${escapeHTML(remainingSentence)}</code></div>
+            <div class="trainer-line">Now: ${escapeHTML(step.sectionTitle)} ${step.sectionStepIndex + 1}/${step.sectionStepCount}</div>
+            <div class="trainer-next">Next key <kbd>${escapeHTML(step.key.toUpperCase())}</kbd> plays ${escapeHTML(step.label)}</div>
             <div class="trainer-cues">${upcoming}</div>
-            <div class="trainer-feedback">${this.trainerFeedback || '&nbsp;'}</div>
+            <div class="trainer-feedback">${this.trainerFeedback ? escapeHTML(this.trainerFeedback) : '&nbsp;'}</div>
         `;
+    }
+
+    _renderCustomComposer() {
+        const show = this.songId === 'custom';
+        this._$customComposer.hidden = !show;
+        this._$customError.textContent = this.customError;
     }
 }
 
