@@ -243,6 +243,31 @@ header h1 {
     font-weight: 600;
 }
 
+.trainer-sentence {
+    display: flex;
+    align-items: baseline;
+    gap: 0.55rem;
+    margin: 0.3rem 0;
+}
+
+.trainer-sentence span {
+    min-width: 6.4rem;
+    color: var(--text-dim);
+}
+
+.trainer-sentence code {
+    display: inline-block;
+    max-width: 100%;
+    overflow-wrap: anywhere;
+    padding: 0.18rem 0.42rem;
+    background: rgba(244, 185, 66, 0.1);
+    border: 1px solid rgba(244, 185, 66, 0.28);
+    border-radius: 4px;
+    color: #f5d58a;
+    font-family: 'SF Mono', 'Cascadia Mono', 'Fira Code', monospace;
+    font-size: 0.78rem;
+}
+
 .trainer-next kbd {
     display: inline-block;
     min-width: 1.8rem;

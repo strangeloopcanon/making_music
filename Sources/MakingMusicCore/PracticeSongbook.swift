@@ -48,6 +48,10 @@ public struct PracticeArrangementSection: Equatable, Sendable {
         self.summary = summary
         self.steps = steps
     }
+
+    public var cueSentence: String {
+        steps.map(\.cueKey).joined()
+    }
 }
 
 public struct PracticeArrangement: Equatable, Sendable {
@@ -72,6 +76,10 @@ public struct PracticeArrangement: Equatable, Sendable {
         self.tempoBPM = tempoBPM
         self.instructions = instructions
         self.sections = sections
+    }
+
+    public var cueSentence: String {
+        sections.flatMap(\.steps).map(\.cueKey).joined()
     }
 }
 
