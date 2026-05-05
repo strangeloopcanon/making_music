@@ -26,6 +26,10 @@ final class InputRouter {
             return false
         }
 
+        if keyCaptureView.routeGuidedPracticeKeyDown(event) {
+            return true
+        }
+
         controller.handleKeyDown(event)
         return true
     }

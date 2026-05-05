@@ -56,6 +56,12 @@ final class SamplerAudioOutput: InstrumentSelectableOutput, SoundFontSelectableO
         case .piano:
             distortion.wetDryMix = 0
             reverb.wetDryMix = 18
+        case .organ:
+            distortion.wetDryMix = 8
+            reverb.wetDryMix = 12
+        case .guitarAcoustic:
+            distortion.wetDryMix = 0
+            reverb.wetDryMix = 14
         case .guitarClean:
             distortion.wetDryMix = 18
             reverb.wetDryMix = 10

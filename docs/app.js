@@ -66,9 +66,148 @@ const PRESETS = {
         voiceLead: true,
         powerChords: false,
     },
+    babaOrgan: {
+        name: "Baba Organ Pulse",
+        instrument: 'organ',
+        scale: 'major',
+        layout: 'typewriterLinear',
+        voiceLead: false,
+        powerChords: false,
+    },
+    stairwayAcoustic: {
+        name: 'Stairway Acoustic Picker',
+        instrument: 'guitarAcoustic',
+        scale: 'naturalMinor',
+        layout: 'typewriterLinear',
+        voiceLead: false,
+        powerChords: false,
+    },
 };
 
 const PRESET_LIST = Object.keys(PRESETS);
+
+// --- Guided song trainer ---
+
+function repeat(items, count) {
+    return Array.from({ length: count }, () => items).flat();
+}
+
+function keyedSteps(cueText, seeds) {
+    const cues = cueText.toLowerCase().replace(/[^a-z0-9]/g, '').split('');
+    return seeds.map((seed, index) => ({
+        ...seed,
+        key: cues[index % cues.length],
+        beats: seed.beats ?? 0.5,
+        kind: seed.kind ?? 'note',
+        accent: seed.accent ?? false,
+    }));
+}
+
+const SONGS = {
+    none: {
+        name: 'Song trainer...',
+        sections: [],
+    },
+    babaORiley: {
+        name: "Baba O'Riley",
+        preset: 'babaOrgan',
+        tempoBPM: 118,
+        instructions: 'Type the highlighted cue key. Correct keys play the next pulse or chord; wrong keys do nothing.',
+        sections: [
+            {
+                title: 'Keyboard pulse',
+                summary: 'F, C, and Bb pulse shapes',
+                steps: keyedSteps('babaoriley', repeat([
+                    { label: 'F4', notes: [65], accent: true },
+                    { label: 'C5', notes: [72] },
+                    { label: 'F5', notes: [77] },
+                    { label: 'C5', notes: [72] },
+                    { label: 'C4', notes: [60], accent: true },
+                    { label: 'G4', notes: [67] },
+                    { label: 'C5', notes: [72] },
+                    { label: 'G4', notes: [67] },
+                    { label: 'Bb3', notes: [58], accent: true },
+                    { label: 'F4', notes: [65] },
+                    { label: 'Bb4', notes: [70] },
+                    { label: 'F4', notes: [65] },
+                    { label: 'F4', notes: [65], accent: true },
+                    { label: 'C5', notes: [72] },
+                    { label: 'F5', notes: [77] },
+                    { label: 'C5', notes: [72] },
+                ], 2)),
+            },
+            {
+                title: 'Big chord landings',
+                summary: 'Wide F, C, and Bb hits',
+                steps: keyedSteps('babaoriley', [
+                    { label: 'F', notes: [53, 60, 65, 69], kind: 'chord', beats: 1, accent: true },
+                    { label: 'C', notes: [48, 55, 60, 64], kind: 'chord', beats: 1 },
+                    { label: 'Bb', notes: [46, 53, 58, 62], kind: 'chord', beats: 1, accent: true },
+                    { label: 'F', notes: [53, 60, 65, 69], kind: 'chord', beats: 1 },
+                    { label: 'C', notes: [48, 55, 60, 64], kind: 'chord', beats: 1 },
+                    { label: 'Bb', notes: [46, 53, 58, 62], kind: 'chord', beats: 1, accent: true },
+                ]),
+            },
+        ],
+    },
+    stairwayToHeaven: {
+        name: 'Stairway to Heaven',
+        preset: 'stairwayAcoustic',
+        tempoBPM: 82,
+        instructions: 'Type the highlighted cue key. Correct keys play the next picked note or landing chord.',
+        sections: [
+            {
+                title: 'Opening arpeggio walk',
+                summary: 'Am, descending bass, F, G, and back to Am',
+                steps: keyedSteps('stairwaytoheaven', [
+                    { label: 'A3', notes: [57], accent: true },
+                    { label: 'C4', notes: [60] },
+                    { label: 'E4', notes: [64] },
+                    { label: 'A4', notes: [69] },
+                    { label: 'G#3', notes: [56], accent: true },
+                    { label: 'C4', notes: [60] },
+                    { label: 'E4', notes: [64] },
+                    { label: 'A4', notes: [69] },
+                    { label: 'G3', notes: [55], accent: true },
+                    { label: 'C4', notes: [60] },
+                    { label: 'E4', notes: [64] },
+                    { label: 'G4', notes: [67] },
+                    { label: 'F#3', notes: [54], accent: true },
+                    { label: 'A3', notes: [57] },
+                    { label: 'D4', notes: [62] },
+                    { label: 'F#4', notes: [66] },
+                    { label: 'F3', notes: [53], accent: true },
+                    { label: 'A3', notes: [57] },
+                    { label: 'C4', notes: [60] },
+                    { label: 'E4', notes: [64] },
+                    { label: 'G3', notes: [55], accent: true },
+                    { label: 'B3', notes: [59] },
+                    { label: 'D4', notes: [62] },
+                    { label: 'G4', notes: [67] },
+                    { label: 'A3', notes: [57], accent: true },
+                    { label: 'C4', notes: [60] },
+                    { label: 'E4', notes: [64] },
+                    { label: 'A4', notes: [69] },
+                ]),
+            },
+            {
+                title: 'Chord landings',
+                summary: 'The same walk as slower shapes',
+                steps: keyedSteps('stairway', [
+                    { label: 'Am', notes: [45, 52, 57, 60, 64], kind: 'chord', beats: 1.25, accent: true },
+                    { label: 'G#/Am', notes: [44, 52, 57, 60, 64], kind: 'chord', beats: 1.25 },
+                    { label: 'C/G', notes: [43, 52, 55, 60, 64], kind: 'chord', beats: 1.25 },
+                    { label: 'D/F#', notes: [42, 57, 62, 66], kind: 'chord', beats: 1.25 },
+                    { label: 'Fmaj7', notes: [41, 57, 60, 64], kind: 'chord', beats: 1.25, accent: true },
+                    { label: 'G', notes: [43, 55, 59, 62], kind: 'chord', beats: 1.25 },
+                    { label: 'Am', notes: [45, 52, 57, 60, 64], kind: 'chord', beats: 1.5, accent: true },
+                ]),
+            },
+        ],
+    },
+};
+
+const SONG_LIST = Object.keys(SONGS);
 
 // --- App ---
 
@@ -82,6 +221,9 @@ class App {
         this.powerChords = false;
         this.lastVLNote = null;
         this.octaveOffset = 0;
+        this.songId = 'none';
+        this.songStepIndex = 0;
+        this.trainerFeedback = '';
 
         this.held = new Set();          // key chars currently down
         this.heldNotes = new Map();     // key → Set<midi>
@@ -125,6 +267,10 @@ class App {
         }
 
         if (!this.armed) return;
+
+        if (this._handleGuidedKeyDown(e)) {
+            return;
+        }
 
         // Resolve physical key → character
         const key = CODE_TO_KEY[e.code];
@@ -179,6 +325,89 @@ class App {
         this.held.delete(key);
         this.heldNotes.delete(key);
         this._renderKeyboard();
+    }
+
+    _handleGuidedKeyDown(e) {
+        const song = this._currentSong();
+        if (!song) return false;
+
+        const key = CODE_TO_KEY[e.code];
+        if (!key) return false;
+
+        e.preventDefault();
+
+        const step = this._currentSongStep();
+        if (!step) return false;
+
+        if (key !== step.key) {
+            this.trainerFeedback = `Typed ${key.toUpperCase()}. Next key is ${step.key.toUpperCase()} for ${step.label}.`;
+            this._renderTrainer();
+            this._renderStatus();
+            return true;
+        }
+
+        this._playSongStep(step, song);
+        this.trainerFeedback = `Played ${step.label}.`;
+        this._advanceSongStep();
+        this._renderKeyboard();
+        this._renderTrainer();
+        this._renderStatus();
+        return true;
+    }
+
+    _currentSong() {
+        const song = SONGS[this.songId];
+        return song && song.sections.length ? song : null;
+    }
+
+    _flatSongSteps(song = this._currentSong()) {
+        if (!song) return [];
+        return song.sections.flatMap((section, sectionIndex) =>
+            section.steps.map((step, sectionStepIndex) => ({
+                ...step,
+                sectionTitle: section.title,
+                sectionIndex,
+                sectionStepIndex,
+                sectionStepCount: section.steps.length,
+            }))
+        );
+    }
+
+    _currentSongStep() {
+        const steps = this._flatSongSteps();
+        return steps[this.songStepIndex] ?? null;
+    }
+
+    _playSongStep(step, song) {
+        const velocity = Math.min(127, step.accent ? 104 : 84);
+        const beatMs = 60000 / Math.max(40, song.tempoBPM ?? 100);
+        const durationMs = Math.max(90, Math.min(2500, beatMs * Math.max(0.25, step.beats ?? 0.5) * 0.9));
+
+        for (const note of step.notes) {
+            this.audio.noteOn(note, velocity);
+            this.activeNotes.add(note);
+        }
+
+        window.setTimeout(() => {
+            for (const note of step.notes) {
+                this.audio.noteOff(note);
+                this.activeNotes.delete(note);
+            }
+            this._renderKeyboard();
+        }, durationMs);
+    }
+
+    _advanceSongStep() {
+        const steps = this._flatSongSteps();
+        if (!steps.length) {
+            this.songStepIndex = 0;
+            return;
+        }
+        this.songStepIndex += 1;
+        if (this.songStepIndex >= steps.length) {
+            this.songStepIndex = 0;
+            this.trainerFeedback = 'Finished. Looping from the top.';
+        }
     }
 
     _lastTs = performance.now();
@@ -242,6 +471,31 @@ class App {
 
         this._renderStatus();
         this._renderKeyboard();
+        this._renderTrainer();
+    }
+
+    _applySong(id) {
+        this.songId = id;
+        this.songStepIndex = 0;
+        this.trainerFeedback = '';
+
+        const song = SONGS[id];
+        if (song?.preset) {
+            this._applyPreset(song.preset);
+        }
+
+        this._$song.value = id;
+        this._renderStatus();
+        this._renderKeyboard();
+        this._renderTrainer();
+    }
+
+    _restartSong() {
+        this.songStepIndex = 0;
+        this.trainerFeedback = this._currentSong() ? 'Restarted from the top.' : '';
+        this._renderStatus();
+        this._renderKeyboard();
+        this._renderTrainer();
     }
 
     // --- UI setup ---
@@ -253,6 +507,9 @@ class App {
         this._$instrument = document.getElementById('instrument');
         this._$scale = document.getElementById('scale');
         this._$layout = document.getElementById('layout');
+        this._$song = document.getElementById('song');
+        this._$restartSong = document.getElementById('restart-song');
+        this._$trainer = document.getElementById('trainer');
         this._$voiceLead = document.getElementById('voice-lead');
         this._$powerChords = document.getElementById('power-chords');
         this._$keyboard = document.getElementById('keyboard');
@@ -262,10 +519,13 @@ class App {
         this._populateSelect(this._$instrument, INSTRUMENT_LIST.map(k => [k, INSTRUMENTS[k].name]));
         this._populateSelect(this._$scale, SCALE_LIST.map(k => [k, SCALES[k].name]));
         this._populateSelect(this._$layout, Object.keys(KEY_LAYOUTS).map(k => [k, KEY_LAYOUTS[k].name]));
+        this._populateSelect(this._$song, SONG_LIST.map(k => [k, SONGS[k].name]));
 
         // Listeners
         this._$armBtn.addEventListener('click', () => this.toggleArmed());
         this._$preset.addEventListener('change', () => this._applyPreset(this._$preset.value));
+        this._$song.addEventListener('change', () => this._applySong(this._$song.value));
+        this._$restartSong.addEventListener('click', () => this._restartSong());
         this._$instrument.addEventListener('change', () => {
             this.audio.setInstrument(this._$instrument.value);
         });
@@ -289,6 +549,7 @@ class App {
 
         this._buildKeyboard();
         this._renderStatus();
+        this._renderTrainer();
     }
 
     _populateSelect(el, items) {
@@ -337,12 +598,15 @@ class App {
     }
 
     _renderKeyboard() {
+        const cueStep = this._currentSongStep();
         for (const ch of Object.keys(this._keyCaps)) {
             const { el, noteEl } = this._keyCaps[ch];
             const midi = this.mapper.midiNote(ch);
-            noteEl.textContent = midi !== null ? pitchClassName(midi) : '';
+            const isCue = cueStep?.key === ch;
+            noteEl.textContent = isCue ? cueStep.label : (midi !== null ? pitchClassName(midi) : '');
             el.classList.toggle('active', this.held.has(ch));
             el.classList.toggle('armed', this.armed);
+            el.classList.toggle('cue', isCue);
         }
     }
 
@@ -356,9 +620,42 @@ class App {
         if (this.octaveOffset !== 0) {
             parts.push(`Oct ${this.octaveOffset > 0 ? '+' : ''}${this.octaveOffset}`);
         }
+        const song = this._currentSong();
+        if (song) {
+            const step = this._currentSongStep();
+            parts.push(`${song.name}: ${step ? `${step.key.toUpperCase()} -> ${step.label}` : 'ready'}`);
+        }
         this._$status.textContent = parts.join('  ·  ');
         this._$armBtn.textContent = this.armed ? '⏸ Pause' : '▶ Play';
         this._$armBtn.classList.toggle('armed', this.armed);
+    }
+
+    _renderTrainer() {
+        const song = this._currentSong();
+        if (!song) {
+            this._$trainer.innerHTML = `<span class="trainer-muted">Pick Baba O'Riley or Stairway to Heaven from Song, press Play, then type the highlighted key.</span>`;
+            return;
+        }
+
+        const steps = this._flatSongSteps(song);
+        const step = steps[this.songStepIndex];
+        if (!step) {
+            this._$trainer.textContent = '';
+            return;
+        }
+
+        const upcoming = steps.slice(this.songStepIndex, this.songStepIndex + 18)
+            .map((s, index) => `<span class="${index === 0 ? 'next' : ''}">${s.key.toUpperCase()}:${s.label}</span>`)
+            .join('');
+
+        this._$trainer.innerHTML = `
+            <div class="trainer-title">${song.name}</div>
+            <div class="trainer-line">${song.instructions}</div>
+            <div class="trainer-line">Now: ${step.sectionTitle} ${step.sectionStepIndex + 1}/${step.sectionStepCount}</div>
+            <div class="trainer-next">Next key <kbd>${step.key.toUpperCase()}</kbd> plays ${step.label}</div>
+            <div class="trainer-cues">${upcoming}</div>
+            <div class="trainer-feedback">${this.trainerFeedback || '&nbsp;'}</div>
+        `;
     }
 }
 

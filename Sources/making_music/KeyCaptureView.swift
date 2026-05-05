@@ -25,6 +25,8 @@ final class KeyCaptureView: NSView {
         case guitarChug = 5
         case chordChartPiano = 6
         case chordChartGuitar = 7
+        case organPulse = 8
+        case acousticFingerpick = 9
     }
 
     private enum PracticeSong: Int, CaseIterable {
@@ -33,6 +35,7 @@ final class KeyCaptureView: NSView {
         case sweetChildOMine
         case novemberRain
         case babaORiley
+        case stairwayToHeaven
         case highwayToHell
         case withArmsWideOpen
 
@@ -43,6 +46,7 @@ final class KeyCaptureView: NSView {
             case .sweetChildOMine: return "Sweet Child O' Mine"
             case .novemberRain: return "November Rain"
             case .babaORiley: return "Baba O'Riley"
+            case .stairwayToHeaven: return "Stairway to Heaven"
             case .highwayToHell: return "Highway to Hell"
             case .withArmsWideOpen: return "With Arms Wide Open"
             }
@@ -54,7 +58,8 @@ final class KeyCaptureView: NSView {
             case .freeBird: return .rockGuitar
             case .sweetChildOMine: return .rockGuitar
             case .novemberRain: return .rockGuitar
-            case .babaORiley: return .rockGuitar
+            case .babaORiley: return .organPulse
+            case .stairwayToHeaven: return .acousticFingerpick
             case .highwayToHell: return .guitarChug
             case .withArmsWideOpen: return .rockGuitar
             }
@@ -64,6 +69,7 @@ final class KeyCaptureView: NSView {
     private struct PracticeSection {
         var title: String
         var chart: String
+        var guideSteps: [PracticeStep] = []
     }
 
     private struct PracticePlan {
@@ -71,11 +77,15 @@ final class KeyCaptureView: NSView {
         var sections: [PracticeSection]
         var showPowerChordTip: Bool
         var recommendedPreset: Preset
+        var instructions: String? = nil
     }
 
     private var inputMode: InputMode = .text
     private var uiMode: UIMode = .simple
     private var practicePlan: PracticePlan?
+    private var practiceSectionIndex = 0
+    private var practiceStepIndex = 0
+    private var lastPracticeFeedback: String?
     private var renderScheduled = false
 
     // MARK: - Controls
@@ -187,6 +197,40 @@ final class KeyCaptureView: NSView {
     func focusTextInput() {
         guard isTextInputMode else { return }
         textComposerView.focus()
+    }
+
+    func routeGuidedPracticeKeyDown(_ event: NSEvent) -> Bool {
+        guard inputMode == .keys else { return false }
+        guard controller.isArmed else { return false }
+        guard let step = currentGuidedStep() else { return false }
+        guard let typedKey = practiceCandidateKey(from: event) else { return false }
+
+        if event.isARepeat { return true }
+
+        if typedKey != step.cueKey {
+            lastPracticeFeedback = "Typed \(typedKey.uppercased()). Next key is \(step.cueKey.uppercased()) for \(step.label)."
+            controller.setAction("Practice: need \(step.cueKey.uppercased()) next.")
+            render()
+            return true
+        }
+
+        playGuidedStep(step)
+        advanceGuidedPractice()
+        render()
+        return true
+    }
+
+    private func practiceCandidateKey(from event: NSEvent) -> String? {
+        let blockedModifiers: NSEvent.ModifierFlags = [.command, .control, .option]
+        guard event.modifierFlags.intersection(blockedModifiers).isEmpty else { return nil }
+
+        // Leave app controls to the normal controller path.
+        let controlKeyCodes: Set<UInt16> = [30, 33, 48, 49, 53]
+        guard !controlKeyCodes.contains(event.keyCode) else { return nil }
+
+        guard let raw = event.charactersIgnoringModifiers?.lowercased(), raw.count == 1 else { return nil }
+        guard raw.rangeOfCharacter(from: CharacterSet.alphanumerics.inverted) == nil else { return nil }
+        return raw
     }
 
     // MARK: - Actions
@@ -459,6 +503,34 @@ final class KeyCaptureView: NSView {
             textPerformer.chordPlaybackStyle = .comp
             textPerformer.chordAdvanceMode = .everyBar
             controller.setAction("Preset: Typing Script (Rock Guitar).")
+
+        case .organPulse:
+            setInputMode(.keys)
+            controller.setInstrument(.organ)
+            controller.setKeyLayout(.typewriterLinear)
+            controller.setVoiceLeadMode(.off)
+            controller.setMappingMode(.chromatic)
+            controller.setPowerChordModeIsOn(false)
+            controller.setPlayStyle(.hold)
+            controller.setTempoBPM(118)
+            controller.setBaseVelocity(88)
+            controller.setStrumChordsIsOn(false)
+            controller.setOctave(0)
+            controller.setAction("Preset: Baba Organ Pulse.")
+
+        case .acousticFingerpick:
+            setInputMode(.keys)
+            controller.setInstrument(.guitarAcoustic)
+            controller.setKeyLayout(.typewriterLinear)
+            controller.setVoiceLeadMode(.off)
+            controller.setMappingMode(.chromatic)
+            controller.setPowerChordModeIsOn(false)
+            controller.setPlayStyle(.hold)
+            controller.setTempoBPM(82)
+            controller.setBaseVelocity(76)
+            controller.setStrumChordsIsOn(false)
+            controller.setOctave(0)
+            controller.setAction("Preset: Stairway Acoustic Picker.")
         }
     }
 
@@ -468,14 +540,17 @@ final class KeyCaptureView: NSView {
             let extracted = textPerformer.chordChartFromText(clipboard)
             if extracted.isEmpty {
                 practicePlan = nil
+                resetPracticeProgress()
                 controller.setAction("Practice: clipboard had no chords.")
             } else {
                 practicePlan = PracticePlan(
                     title: "Clipboard",
                     sections: [PracticeSection(title: "Pasted chord chart", chart: extracted)],
                     showPowerChordTip: true,
-                    recommendedPreset: .rockGuitar
+                    recommendedPreset: .rockGuitar,
+                    instructions: nil
                 )
+                resetPracticeProgress()
                 controller.setAction("Practice: pasted chords from clipboard.")
             }
             render()
@@ -484,6 +559,7 @@ final class KeyCaptureView: NSView {
 
         if index == practiceClearIndex() {
             practicePlan = nil
+            resetPracticeProgress()
             controller.setAction("Practice: cleared.")
             render()
             return
@@ -492,6 +568,7 @@ final class KeyCaptureView: NSView {
         guard let selection = practiceSelection(forIndex: index) else { return }
         let plan = practicePlan(for: selection)
         practicePlan = plan
+        resetPracticeProgress()
         applyPreset(plan.recommendedPreset)
         controller.setAction("Practice: \(selection.title). Preset: \(presetTitle(for: plan.recommendedPreset)).")
         render()
@@ -589,21 +666,18 @@ final class KeyCaptureView: NSView {
             )
 
         case .babaORiley:
-            return PracticePlan(
-                title: song.title,
-                sections: [
-                    PracticeSection(
-                        title: "Main loop (practice)",
-                        chart: "F C Bb  F C Bb  F C Bb"
-                    ),
-                    PracticeSection(
-                        title: "Alt loop (practice)",
-                        chart: "C Bb F  C Bb F"
-                    ),
-                ],
-                showPowerChordTip: true,
-                recommendedPreset: song.recommendedPreset
-            )
+            if let arrangement = PracticeSongbook.arrangement(id: "baba-o-riley") {
+                return practicePlan(from: arrangement, recommendedPreset: song.recommendedPreset, showPowerChordTip: false)
+            }
+
+            return PracticePlan(title: song.title, sections: [], showPowerChordTip: false, recommendedPreset: song.recommendedPreset)
+
+        case .stairwayToHeaven:
+            if let arrangement = PracticeSongbook.arrangement(id: "stairway-to-heaven") {
+                return practicePlan(from: arrangement, recommendedPreset: song.recommendedPreset, showPowerChordTip: false)
+            }
+
+            return PracticePlan(title: song.title, sections: [], showPowerChordTip: false, recommendedPreset: song.recommendedPreset)
 
         case .highwayToHell:
             return PracticePlan(
@@ -641,6 +715,83 @@ final class KeyCaptureView: NSView {
         }
     }
 
+    private func practicePlan(
+        from arrangement: PracticeArrangement,
+        recommendedPreset: Preset,
+        showPowerChordTip: Bool
+    ) -> PracticePlan {
+        PracticePlan(
+            title: arrangement.title,
+            sections: arrangement.sections.map { section in
+                PracticeSection(title: section.title, chart: section.summary, guideSteps: section.steps)
+            },
+            showPowerChordTip: showPowerChordTip,
+            recommendedPreset: recommendedPreset,
+            instructions: arrangement.instructions
+        )
+    }
+
+    private func resetPracticeProgress() {
+        practiceSectionIndex = 0
+        practiceStepIndex = 0
+        lastPracticeFeedback = nil
+    }
+
+    private func currentGuidedStep() -> PracticeStep? {
+        guard let plan = practicePlan else { return nil }
+        guard practiceSectionIndex >= 0, practiceSectionIndex < plan.sections.count else { return nil }
+        let steps = plan.sections[practiceSectionIndex].guideSteps
+        guard practiceStepIndex >= 0, practiceStepIndex < steps.count else { return nil }
+        return steps[practiceStepIndex]
+    }
+
+    private func currentKeyboardCue() -> KeyboardMapView.Cue? {
+        guard let step = currentGuidedStep() else { return nil }
+        return KeyboardMapView.Cue(key: step.cueKey, noteName: step.label, detail: "NEXT")
+    }
+
+    private func playGuidedStep(_ step: PracticeStep) {
+        let accentBoost = step.accent ? 22 : 0
+        let velocity = UInt8(min(127, Int(controller.baseVelocity) + accentBoost))
+        let secondsPerBeat = 60.0 / Double(max(40, controller.tempoBPM))
+        let duration = max(0.08, min(2.5, secondsPerBeat * max(0.25, step.beats) * 0.9))
+
+        switch step.kind {
+        case .note:
+            controller.playTransient(notes: step.midiNotes, velocity: velocity, durationSeconds: duration)
+        case .chord:
+            controller.playTransient(notes: step.midiNotes.sorted(), velocity: velocity, durationSeconds: duration)
+        }
+
+        lastPracticeFeedback = "Played \(step.label)."
+        controller.setAction("Practice: \(step.label).")
+    }
+
+    private func advanceGuidedPractice() {
+        guard let plan = practicePlan else { return }
+        guard !plan.sections.isEmpty else { return }
+
+        let section = plan.sections[practiceSectionIndex]
+        if practiceStepIndex + 1 < section.guideSteps.count {
+            practiceStepIndex += 1
+            return
+        }
+
+        if practiceSectionIndex + 1 < plan.sections.count {
+            practiceSectionIndex += 1
+            practiceStepIndex = 0
+            return
+        }
+
+        practiceSectionIndex = 0
+        practiceStepIndex = 0
+        lastPracticeFeedback = "Finished \(plan.title). Looping from the top."
+    }
+
+    private func hasGuidedPractice(_ plan: PracticePlan) -> Bool {
+        plan.sections.contains { !$0.guideSteps.isEmpty }
+    }
+
     private struct ParsedChordSymbol {
         var raw: String
         var root: PitchClass
@@ -676,12 +827,41 @@ final class KeyCaptureView: NSView {
 
     private func practiceText() -> String {
         guard let plan = practicePlan else {
-            return "Pick Practice… to load a multi-section chord sheet with the exact keys to press (or paste chords from Clipboard)."
+            return "Pick Practice... to load a multi-section chord sheet or a guided typing song. For Baba O'Riley and Stairway to Heaven, type the highlighted next key and the app plays the right note/chord."
         }
 
         var lines: [String] = []
-        lines.append("Practice — \(plan.title)")
+        lines.append("Practice - \(plan.title)")
         lines.append("Preset: \(presetTitle(for: plan.recommendedPreset)) (auto-applied)")
+
+        if hasGuidedPractice(plan) {
+            if let instructions = plan.instructions {
+                lines.append(instructions)
+            }
+            lines.append("Turn Play ON, then type the highlighted key. Wrong keys do nothing, so you can keep your hands on the keyboard.")
+            if let feedback = lastPracticeFeedback {
+                lines.append("Last: \(feedback)")
+            }
+
+            if let step = currentGuidedStep(), practiceSectionIndex < plan.sections.count {
+                let section = plan.sections[practiceSectionIndex]
+                lines.append("")
+                lines.append("Now: \(section.title)  \(practiceStepIndex + 1)/\(section.guideSteps.count)")
+                lines.append("Next: \(step.cueKey.uppercased()) -> \(step.label)")
+                lines.append("Type: \(guidedCueLine(section: section, currentIndex: practiceStepIndex, limit: 40))")
+            }
+
+            lines.append("")
+            for (index, section) in plan.sections.enumerated() {
+                lines.append("\(index + 1). \(section.title)")
+                lines.append(section.chart)
+                lines.append(guidedCueLine(section: section, currentIndex: nil, limit: 72))
+                lines.append("")
+            }
+
+            return lines.joined(separator: "\n")
+        }
+
         lines.append("Note: if you see '?' keys, switch to All Notes so every chord exists.")
         if plan.showPowerChordTip {
             lines.append("Tip: Power chords = ON makes one key sound like a guitar chord (turn OFF for single-note riffs/arpeggios).")
@@ -695,6 +875,20 @@ final class KeyCaptureView: NSView {
         }
 
         return lines.joined(separator: "\n")
+    }
+
+    private func guidedCueLine(section: PracticeSection, currentIndex: Int?, limit: Int) -> String {
+        guard !section.guideSteps.isEmpty else { return "" }
+
+        let visible = Array(section.guideSteps.prefix(limit))
+        let parts = visible.enumerated().map { index, step -> String in
+            let token = "[\(step.cueKey.uppercased()):\(step.label)]"
+            guard let currentIndex, index == currentIndex else { return token }
+            return ">>\(token)<<"
+        }
+
+        let suffix = section.guideSteps.count > visible.count ? " ..." : ""
+        return parts.joined(separator: " ") + suffix
     }
 
     private func presetTitle(for preset: Preset) -> String {
@@ -713,6 +907,10 @@ final class KeyCaptureView: NSView {
             return "Typing Script (Two-hand Piano)"
         case .chordChartGuitar:
             return "Typing Script (Rock Guitar)"
+        case .organPulse:
+            return "Baba Organ Pulse"
+        case .acousticFingerpick:
+            return "Stairway Acoustic Picker"
         }
     }
 
@@ -777,6 +975,8 @@ final class KeyCaptureView: NSView {
             "Guitar Chug (16ths)",
             "Typing Script (Two-hand Piano)",
             "Typing Script (Rock Guitar)",
+            "Baba Organ Pulse",
+            "Stairway Acoustic Picker",
         ])
         presetPopup.selectItem(at: 0)
 
@@ -1028,7 +1228,7 @@ final class KeyCaptureView: NSView {
         textComposerView.isHidden = isKeys
 
         if isKeys {
-            keyboardMapView.render()
+            keyboardMapView.render(cue: currentKeyboardCue())
             touchpadPadView.render()
         } else {
             textComposerView.render()
@@ -1127,7 +1327,8 @@ final class KeyCaptureView: NSView {
                  Chord advance: “Every bar” keeps chords locked to time; “On spaces” follows word boundaries.
 
         Tip
-          Switch back to Keys mode to play riffs (the key map shows the notes).
+          Switch back to Keys mode and pick Practice -> Baba O'Riley or Stairway to Heaven
+          for guided "type the next key" practice.
         """
     }
 }

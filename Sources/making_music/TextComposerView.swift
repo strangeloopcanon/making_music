@@ -182,6 +182,7 @@ final class TextComposerView: NSView {
             "Sweet Child O' Mine (starter loop: D C G D)",
             "November Rain (starter loop: C G Am F)",
             "Baba O'Riley (F C Bb)",
+            "Stairway to Heaven (Am walk)",
             "Highway to Hell (riff: A D/F# G)",
             "With Arms Wide Open (C C/B Am …)",
             "Pop/Rock I–V–vi–IV (G D Em C)",
@@ -378,22 +379,27 @@ final class TextComposerView: NSView {
             controller.setTempoBPM(118)
             chart = "F C Bb"
         case 7:
+            performer.scriptStyle = .balladPick
+            performer.timingGrid = .eighths
+            controller.setTempoBPM(82)
+            chart = "Am Am/G# C/G D/F# Fmaj7 G Am"
+        case 8:
             performer.scriptStyle = .powerChug
             performer.timingGrid = .eighths
             controller.setTempoBPM(116)
             chart = "A D/F# G D/F# G | E | A D G D"
-        case 8:
+        case 9:
             performer.scriptStyle = .balladPick
             performer.timingGrid = .eighths
             controller.setTempoBPM(92)
             chart = "C C/B Am | F C | E D | C C/B Am"
-        case 9:
-            performer.scriptStyle = .rockStrum
-            chart = "G D Em C"
         case 10:
             performer.scriptStyle = .rockStrum
-            chart = "A7 D7 A7 A7 D7 D7 A7 A7 E7 D7 A7 E7"
+            chart = "G D Em C"
         case 11:
+            performer.scriptStyle = .rockStrum
+            chart = "A7 D7 A7 A7 D7 D7 A7 A7 E7 D7 A7 E7"
+        case 12:
             let clipboard = NSPasteboard.general.string(forType: .string) ?? ""
             let extracted = performer.chordChartFromText(clipboard)
             chart = extracted
@@ -402,7 +408,7 @@ final class TextComposerView: NSView {
             } else {
                 controller.setAction("Pasted chords from clipboard.")
             }
-        case 12:
+        case 13:
             chart = ""
         default:
             chart = ""

@@ -39,6 +39,14 @@ export const INSTRUMENTS = {
         filterFreq: 5500, filterQ: 0.6,
         distortion: 0, reverb: 0.25,
     },
+    organ: {
+        name: 'Organ',
+        carrier: 'square', fmRatio: 2, fmDepth: 0.08,
+        rich: true, richRatio: 3, richDepth: 0.05, richDetune: 1,
+        attack: 0.008, decay: 0.18, sustain: 0.75, release: 0.18,
+        filterFreq: 3600, filterQ: 0.8,
+        distortion: 0.08, reverb: 0.16,
+    },
     electricPiano: {
         name: 'Electric Piano',
         carrier: 'sine', fmRatio: 7, fmDepth: 0.3,
@@ -46,6 +54,14 @@ export const INSTRUMENTS = {
         attack: 0.003, decay: 0.65, sustain: 0.18, release: 0.5,
         filterFreq: 4000, filterQ: 0.9,
         distortion: 0, reverb: 0.3,
+    },
+    guitarAcoustic: {
+        name: 'Guitar (Acoustic)',
+        carrier: 'triangle', fmRatio: 3, fmDepth: 0.22,
+        rich: true, richRatio: 9, richDepth: 0.1, richDetune: 2,
+        attack: 0.002, decay: 0.28, sustain: 0.18, release: 0.22,
+        filterFreq: 5200, filterQ: 1.4,
+        distortion: 0, reverb: 0.18,
     },
     guitarClean: {
         name: 'Guitar (Clean)',
