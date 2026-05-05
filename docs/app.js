@@ -85,6 +85,7 @@ const PRESETS = {
 };
 
 const PRESET_LIST = Object.keys(PRESETS);
+const VALID_CUE_KEYS = new Set(QWERTY_ROWS.flat().filter(key => /^[a-z0-9]$/.test(key)));
 
 // --- Guided song trainer ---
 
@@ -97,6 +98,7 @@ function keyedSteps(cueText, seeds) {
     return seeds.map((seed, index) => ({
         ...seed,
         key: cues[index % cues.length],
+        keys: [cues[index % cues.length]],
         beats: seed.beats ?? 0.5,
         kind: seed.kind ?? 'note',
         accent: seed.accent ?? false,
@@ -116,11 +118,11 @@ const NOTE_PITCH_CLASS = {
 const CUSTOM_SCORE_EXAMPLE = `title: My first song
 tempo: 100
 instrument: piano
-sentence: hellomusic
+sentence: hello<c+d+f>music
 notes: C4 D4 E4 G4 [C4,E4,G4]/1 A4 G4 E4 D4 C4
 
 # Direct form also works:
-# h:C4 e:D4 l:E4 l:G4 o:[C4,E4,G4]/1`;
+# h:C4 e:D4 c+d+f:[C4,E4,G4]/1`;
 
 function escapeHTML(value) {
     return String(value).replace(/[&<>"']/g, ch => ({
@@ -144,6 +146,83 @@ function noteNameToMidi(name) {
     const midi = (octave + 1) * 12 + pc;
     if (midi < 0 || midi > 127) throw new Error(`Note out of range "${name}"`);
     return midi;
+}
+
+function canonicalCueKeys(keys) {
+    const unique = [];
+    const seen = new Set();
+    for (const rawKey of keys) {
+        const key = rawKey.toLowerCase();
+        if (seen.has(key)) continue;
+        seen.add(key);
+        unique.push(key);
+    }
+    if (!unique.length) throw new Error('Cue is empty');
+    for (const key of unique) {
+        if (!VALID_CUE_KEYS.has(key)) throw new Error(`Unsupported cue key "${key}"`);
+    }
+    return unique;
+}
+
+function parseCueToken(rawCue) {
+    let cue = String(rawCue).trim().toLowerCase();
+    if (cue.startsWith('<') && cue.endsWith('>')) {
+        cue = cue.slice(1, -1).trim();
+    }
+    if (!cue) throw new Error('Cue is empty');
+
+    const parts = cue.includes('+') || cue.includes(',')
+        ? cue.split(/[+,]/).map(part => part.trim()).filter(Boolean)
+        : cue.replace(/[^a-z0-9]/g, '').split('');
+
+    return canonicalCueKeys(parts);
+}
+
+function parseCueSentence(value) {
+    const cues = [];
+    const text = String(value).toLowerCase();
+    let index = 0;
+
+    while (index < text.length) {
+        const ch = text[index];
+        if (/\s/.test(ch)) {
+            index += 1;
+            continue;
+        }
+
+        if (ch === '<') {
+            const end = text.indexOf('>', index + 1);
+            if (end < 0) throw new Error('Unclosed compound cue in sentence');
+            cues.push(parseCueToken(text.slice(index, end + 1)));
+            index = end + 1;
+            continue;
+        }
+
+        if (/^[a-z0-9]$/.test(ch)) {
+            cues.push([ch]);
+        }
+        index += 1;
+    }
+
+    return cues;
+}
+
+function cueMatchesHeld(cueKeys, heldKeys) {
+    const expected = new Set(cueKeys);
+    return heldKeys.size === expected.size && cueKeys.every(key => heldKeys.has(key));
+}
+
+function cueDisplay(step) {
+    return stepKeys(step).map(key => key.toUpperCase()).join('+');
+}
+
+function cueSentenceToken(step) {
+    const keys = stepKeys(step);
+    return keys.length === 1 ? keys[0] : `<${keys.join('+')}>`;
+}
+
+function stepKeys(step) {
+    return step.keys ?? [step.key];
 }
 
 function parseMusicalValue(rawValue) {
@@ -219,7 +298,7 @@ function parseCustomScore(text) {
                 continue;
             }
             if (key === 'sentence') {
-                sentence = value.toLowerCase().replace(/[^a-z0-9]/g, '');
+                sentence = value;
                 continue;
             }
             if (key === 'notes') {
@@ -233,22 +312,26 @@ function parseCustomScore(text) {
 
     let steps = [];
     if (noteLine.trim()) {
-        const cues = sentence.split('');
+        const cues = parseCueSentence(sentence);
         if (!cues.length) throw new Error('Add a sentence: line when using notes:');
 
-        steps = noteLine.trim().split(/\s+/).map((token, index) => ({
-            key: cues[index % cues.length],
-            ...parseMusicalValue(token),
-        }));
+        steps = noteLine.trim().split(/\s+/).map((token, index) => {
+            const keys = cues[index % cues.length];
+            return {
+                key: keys.join('+'),
+                keys,
+                ...parseMusicalValue(token),
+            };
+        });
     } else {
         const tokens = directLines.join(' ').trim().split(/\s+/).filter(Boolean);
         steps = tokens.map(token => {
             const split = token.indexOf(':');
             if (split <= 0) throw new Error(`Expected key:note token, got "${token}"`);
-            const cue = token.slice(0, split).toLowerCase().replace(/[^a-z0-9]/g, '');
-            if (cue.length !== 1) throw new Error(`Cue key must be one letter or digit in "${token}"`);
+            const keys = parseCueToken(token.slice(0, split));
             return {
-                key: cue,
+                key: keys.join('+'),
+                keys,
                 ...parseMusicalValue(token.slice(split + 1)),
             };
         });
@@ -401,6 +484,7 @@ class App {
         this.trainerFeedback = '';
         this.customSong = null;
         this.customError = '';
+        this.guidedHeldKeys = new Set();
 
         this.held = new Set();          // key chars currently down
         this.heldNotes = new Map();     // key → Set<midi>
@@ -490,6 +574,12 @@ class App {
 
     _onKeyUp(e) {
         const key = CODE_TO_KEY[e.code];
+        if (key && this._currentSong()) {
+            this.guidedHeldKeys.delete(key);
+            this._renderKeyboard();
+            return;
+        }
+
         if (!key || !this.held.has(key)) return;
 
         const notes = this.heldNotes.get(key);
@@ -512,19 +602,32 @@ class App {
         if (!key) return false;
 
         e.preventDefault();
+        this.guidedHeldKeys.add(key);
 
         const step = this._currentSongStep();
         if (!step) return false;
+        const expectedKeys = stepKeys(step);
+        const expectedSet = new Set(expectedKeys);
 
-        if (key !== step.key) {
-            this.trainerFeedback = `Typed ${key.toUpperCase()}. Next key is ${step.key.toUpperCase()} for ${step.label}.`;
+        if (!expectedSet.has(key)) {
+            this.trainerFeedback = `Typed ${key.toUpperCase()}. Next cue is ${cueDisplay(step)} for ${step.label}.`;
             this._renderTrainer();
             this._renderStatus();
+            this._renderKeyboard();
+            return true;
+        }
+
+        if (expectedKeys.length > 1 && !cueMatchesHeld(expectedKeys, this.guidedHeldKeys)) {
+            this.trainerFeedback = `Hold ${cueDisplay(step)} together for ${step.label}.`;
+            this._renderTrainer();
+            this._renderStatus();
+            this._renderKeyboard();
             return true;
         }
 
         this._playSongStep(step, song);
         this.trainerFeedback = `Played ${step.label}.`;
+        this.guidedHeldKeys.clear();
         this._advanceSongStep();
         this._renderKeyboard();
         this._renderTrainer();
@@ -591,7 +694,7 @@ class App {
     }
 
     _songSentence(steps = this._flatSongSteps()) {
-        return steps.map(step => step.key).join('');
+        return steps.map(cueSentenceToken).join('');
     }
 
     _lastTs = performance.now();
@@ -621,6 +724,7 @@ class App {
         this.held.clear();
         this.heldNotes.clear();
         this.activeNotes.clear();
+        this.guidedHeldKeys.clear();
         this.lastVLNote = null;
         this._renderKeyboard();
     }
@@ -820,12 +924,16 @@ class App {
 
     _renderKeyboard() {
         const cueStep = this._currentSongStep();
+        const cueKeys = cueStep ? new Set(stepKeys(cueStep)) : new Set();
         for (const ch of Object.keys(this._keyCaps)) {
             const { el, noteEl } = this._keyCaps[ch];
             const midi = this.mapper.midiNote(ch);
-            const isCue = cueStep?.key === ch;
-            noteEl.textContent = isCue ? cueStep.label : (midi !== null ? pitchClassName(midi) : '');
-            el.classList.toggle('active', this.held.has(ch));
+            const isCue = cueKeys.has(ch);
+            const isHeld = this.held.has(ch) || this.guidedHeldKeys.has(ch);
+            noteEl.textContent = isCue
+                ? (cueKeys.size > 1 ? cueDisplay(cueStep) : cueStep.label)
+                : (midi !== null ? pitchClassName(midi) : '');
+            el.classList.toggle('active', isHeld);
             el.classList.toggle('armed', this.armed);
             el.classList.toggle('cue', isCue);
         }
@@ -844,7 +952,7 @@ class App {
         const song = this._currentSong();
         if (song) {
             const step = this._currentSongStep();
-            parts.push(`${song.name}: ${step ? `${step.key.toUpperCase()} -> ${step.label}` : 'ready'}`);
+            parts.push(`${song.name}: ${step ? `${cueDisplay(step)} -> ${step.label}` : 'ready'}`);
         }
         this._$status.textContent = parts.join('  ·  ');
         this._$armBtn.textContent = this.armed ? '⏸ Pause' : '▶ Play';
@@ -869,7 +977,7 @@ class App {
         }
 
         const upcoming = steps.slice(this.songStepIndex, this.songStepIndex + 18)
-            .map((s, index) => `<span class="${index === 0 ? 'next' : ''}">${escapeHTML(s.key.toUpperCase())}:${escapeHTML(s.label)}</span>`)
+            .map((s, index) => `<span class="${index === 0 ? 'next' : ''}">${escapeHTML(cueDisplay(s))}:${escapeHTML(s.label)}</span>`)
             .join('');
         const fullSentence = this._songSentence(steps);
         const remainingSentence = this._songSentence(steps.slice(this.songStepIndex));
@@ -877,11 +985,11 @@ class App {
         this._$trainer.innerHTML = `
             <div class="trainer-title">${escapeHTML(song.name)}</div>
             <div class="trainer-line">${escapeHTML(song.instructions)}</div>
-            <div class="trainer-line">No compound keys: type only the letters in the sentence. The note after ':' is what the app plays.</div>
+            <div class="trainer-line">Single cues are normal letters. Compound cues like C+D+F mean hold those keys together; the note after ':' is what the app plays.</div>
             <div class="trainer-sentence"><span>Full sentence</span><code>${escapeHTML(fullSentence)}</code></div>
             <div class="trainer-sentence"><span>Remaining</span><code>${escapeHTML(remainingSentence)}</code></div>
             <div class="trainer-line">Now: ${escapeHTML(step.sectionTitle)} ${step.sectionStepIndex + 1}/${step.sectionStepCount}</div>
-            <div class="trainer-next">Next key <kbd>${escapeHTML(step.key.toUpperCase())}</kbd> plays ${escapeHTML(step.label)}</div>
+            <div class="trainer-next">Next cue <kbd>${escapeHTML(cueDisplay(step))}</kbd> plays ${escapeHTML(step.label)}</div>
             <div class="trainer-cues">${upcoming}</div>
             <div class="trainer-feedback">${this.trainerFeedback ? escapeHTML(this.trainerFeedback) : '&nbsp;'}</div>
         `;
