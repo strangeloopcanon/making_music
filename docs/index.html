@@ -58,7 +58,19 @@
             <kbd>Alt</kbd>+key = bass &nbsp;
             <kbd>Ctrl</kbd>+key = chord &nbsp;
             <kbd>[</kbd> <kbd>]</kbd> shift octave &nbsp;
-            Song trainer: type the full sentence or follow the highlighted cue
+            Song trainer: type the full sentence, follow the highlighted cue, or compose a Custom song
+        </div>
+        <div id="custom-composer" class="custom-composer" hidden>
+            <label for="custom-score">Custom score</label>
+            <textarea id="custom-score" spellcheck="false"></textarea>
+            <div class="custom-actions">
+                <button id="load-custom">Load custom song</button>
+                <span id="custom-error"></span>
+            </div>
+            <div class="custom-help">
+                Write <code>sentence:</code> plus <code>notes:</code>, or direct tokens like <code>b:Bb4</code> and <code>a:[F3,C4,F4,A4]/1</code>.
+                Instruments: <code>piano</code>, <code>organ</code>, <code>guitarAcoustic</code>, <code>guitarOverdriven</code>.
+            </div>
         </div>
     </div>
 
